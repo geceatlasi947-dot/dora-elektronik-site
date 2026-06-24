@@ -1925,11 +1925,8 @@ class DatabaseEngine {
         this.saveLocalCollection('users');
 
         if (this.isFirebaseReady) {
-            try {
-                await this.firestore.collection(this.collections.users).doc(sanitizedEmail).set(newUser);
-            } catch (err) {
-                console.error("Firestore user registration failed, fallback to local storage:", err);
-            }
+            this.firestore.collection(this.collections.users).doc(sanitizedEmail).set(newUser)
+                .catch(err => console.error("Firestore user registration failed, fallback to local storage:", err));
         }
         
         return newUser;
@@ -1970,20 +1967,26 @@ class DatabaseEngine {
     }
 
     getCurrentUser() {
-        let sessionData = localStorage.getItem('dora_db_session');
-        if (!sessionData) {
-            sessionData = sessionStorage.getItem('dora_db_session');
-        }
-        if (!sessionData) return null;
+        try {
+            let sessionData = localStorage.getItem('dora_db_session');
+            if (!sessionData) {
+                sessionData = sessionStorage.getItem('dora_db_session');
+            }
+            if (!sessionData) return null;
 
-        const session = JSON.parse(sessionData);
-        if (Date.now() > session.expires_at) {
+            const session = JSON.parse(sessionData);
+            if (!session || Date.now() > session.expires_at) {
+                this.logout();
+                return null;
+            }
+
+            const users = this.cache.users;
+            return users.find(u => u.id === session.userId) || null;
+        } catch (e) {
+            console.error("Failed to parse session data:", e);
             this.logout();
             return null;
         }
-
-        const users = this.cache.users;
-        return users.find(u => u.id === session.userId) || null;
     }
 
     updateUserProfile(userId, name, phone, address) {
@@ -2375,11 +2378,8 @@ class DatabaseEngine {
             this.saveLocalCollection('payments');
 
             if (this.isFirebaseReady) {
-                try {
-                    await this.firestore.collection(this.collections.payments).doc(orderCode).set(payment);
-                } catch (err) {
-                    console.error("Firestore payment update failed, fallback to local storage:", err);
-                }
+                this.firestore.collection(this.collections.payments).doc(orderCode).set(payment)
+                    .catch(err => console.error("Firestore payment update failed, fallback to local storage:", err));
             }
             return payment;
         } else {
@@ -2396,11 +2396,8 @@ class DatabaseEngine {
             this.saveLocalCollection('payments');
 
             if (this.isFirebaseReady) {
-                try {
-                    await this.firestore.collection(this.collections.payments).doc(orderCode).set(newPaymentRecord);
-                } catch (err) {
-                    console.error("Firestore payment creation failed, fallback to local storage:", err);
-                }
+                this.firestore.collection(this.collections.payments).doc(orderCode).set(newPaymentRecord)
+                    .catch(err => console.error("Firestore payment creation failed, fallback to local storage:", err));
             }
             return newPaymentRecord;
         }
