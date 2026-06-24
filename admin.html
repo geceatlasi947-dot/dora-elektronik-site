@@ -1,0 +1,412 @@
+﻿<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- DORA Security: Content Security Policy -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';">
+    <title>Yönetim Paneli - Dora Elektronik</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        @media (min-width: 992px) {
+            .admin-sidebar {
+                position: sticky;
+                top: 120px;
+            }
+        }
+        .admin-pane {
+            scroll-margin-top: 120px;
+        }
+        .admin-pane:not(:last-child) {
+            margin-bottom: 50px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 50px;
+        }
+    </style>
+    <!-- Chart.js for premium analytics visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body style="background-color: #f6f5f0;">
+
+    <!-- Header / Navbar -->
+    <header class="navbar">
+        <div class="container nav-content">
+            <div class="logo">
+                <h1><a href="index.html">Dora Elektronik<span>.</span></a></h1>
+            </div>
+            
+            <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                <input type="text" id="search-input" placeholder="Ürün veya marka ara...">
+            </div>
+
+            <nav class="nav-links">
+                <a href="index.html#guzellik" class="nav-link">Güzellik</a>
+                <a href="index.html#temizlik" class="nav-link">Temizlik</a>
+                <a href="index.html#mutfak" class="nav-link">Mutfak</a>
+                <a href="index.html#kahve" class="nav-link">Kahve</a>
+            </nav>
+            <div class="nav-actions" style="display: flex; align-items: center; gap: 15px;">
+                <div id="auth-area" style="display: flex; align-items: center; gap: 10px;">
+                    <!-- Injected dynamically -->
+                </div>
+                <button id="cart-btn" class="icon-btn">
+                    <i class="fa-solid fa-bag-shopping"></i>
+                    <span id="cart-count">0</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Admin Panel Container -->
+    <main class="container" style="padding-top: 8rem; padding-bottom: 5rem;">
+        <div class="admin-layout" style="display: grid; grid-template-columns: 260px 1fr; gap: 30px; align-items: start;">
+            
+            <!-- Left Sidebar Navigation -->
+            <aside class="admin-sidebar" style="background: white; border: 1px solid var(--border); border-radius: 8px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.02);">
+                <h3 style="font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px; color: var(--primary); margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">Yönetim</h3>
+                <nav class="admin-nav" style="display: flex; flex-direction: column; gap: 8px;">
+                    <button class="admin-tab-btn active" data-tab="dashboard" style="display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 16px; border: none; background: none; text-align: left; font-family: inherit; font-size: 0.95rem; font-weight: 500; color: var(--dark); cursor: pointer; border-radius: 4px; transition: var(--transition);">
+                        <i class="fa-solid fa-chart-line"></i> Gösterge Paneli
+                    </button>
+                    <button class="admin-tab-btn" data-tab="orders" style="display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 16px; border: none; background: none; text-align: left; font-family: inherit; font-size: 0.95rem; font-weight: 500; color: var(--gray); cursor: pointer; border-radius: 4px; transition: var(--transition);">
+                        <i class="fa-solid fa-dolly"></i> Siparişler
+                    </button>
+                    <button class="admin-tab-btn" data-tab="inventory" style="display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 16px; border: none; background: none; text-align: left; font-family: inherit; font-size: 0.95rem; font-weight: 500; color: var(--gray); cursor: pointer; border-radius: 4px; transition: var(--transition);">
+                        <i class="fa-solid fa-boxes-stacked"></i> Envanter
+                    </button>
+                    <button class="admin-tab-btn" data-tab="reviews" style="display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 16px; border: none; background: none; text-align: left; font-family: inherit; font-size: 0.95rem; font-weight: 500; color: var(--gray); cursor: pointer; border-radius: 4px; transition: var(--transition);">
+                        <i class="fa-regular fa-comments"></i> Değerlendirmeler
+                    </button>
+                    <button class="admin-tab-btn" data-tab="payments" style="display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 16px; border: none; background: none; text-align: left; font-family: inherit; font-size: 0.95rem; font-weight: 500; color: var(--gray); cursor: pointer; border-radius: 4px; transition: var(--transition);">
+                        <i class="fa-solid fa-shield-halved"></i> Ödemeler
+                    </button>
+                </nav>
+            </aside>
+
+            <!-- Right Content Sections -->
+            <section class="admin-content" style="background: white; border: 1px solid var(--border); border-radius: 8px; padding: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); min-height: 500px; text-align: left;">
+                
+                <!-- Tab 1: Dashboard Analytics -->
+                <div id="pane-dashboard" class="admin-pane">
+                    <h2 style="font-size: 1.5rem; margin-bottom: 25px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">Mağaza Genel Durumu</h2>
+                    
+                    <!-- Stats Cards Grid -->
+                    <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; margin-bottom: 30px;">
+                        <div class="stat-card" style="background: #fdfcf9; border: 1px solid var(--border); border-radius: 6px; padding: 20px; text-align: center;">
+                            <i class="fa-solid fa-turkish-lira-sign" style="font-size: 1.5rem; color: var(--primary); margin-bottom: 10px;"></i>
+                            <p style="font-size: 0.8rem; color: var(--gray); text-transform: uppercase;">Toplam Ciro</p>
+                            <h3 id="stat-revenue" style="font-size: 1.4rem; font-weight: 700; color: var(--dark); margin-top: 5px;">0.00 TL</h3>
+                        </div>
+                        <div class="stat-card" style="background: #fdfcf9; border: 1px solid var(--border); border-radius: 6px; padding: 20px; text-align: center;">
+                            <i class="fa-solid fa-cart-shopping" style="font-size: 1.5rem; color: #3ae374; margin-bottom: 10px;"></i>
+                            <p style="font-size: 0.8rem; color: var(--gray); text-transform: uppercase;">Toplam Sipariş</p>
+                            <h3 id="stat-orders" style="font-size: 1.4rem; font-weight: 700; color: var(--dark); margin-top: 5px;">0</h3>
+                        </div>
+                        <div class="stat-card" style="background: #fdfcf9; border: 1px solid var(--border); border-radius: 6px; padding: 20px; text-align: center;">
+                            <i class="fa-regular fa-user" style="font-size: 1.5rem; color: #17c0eb; margin-bottom: 10px;"></i>
+                            <p style="font-size: 0.8rem; color: var(--gray); text-transform: uppercase;">Kayıtlı Müşteri</p>
+                            <h3 id="stat-users" style="font-size: 1.4rem; font-weight: 700; color: var(--dark); margin-top: 5px;">0</h3>
+                        </div>
+                        <div class="stat-card" style="background: #fdfcf9; border: 1px solid var(--border); border-radius: 6px; padding: 20px; text-align: center;">
+                            <i class="fa-solid fa-triangle-exclamation" style="font-size: 1.5rem; color: #ff3838; margin-bottom: 10px;"></i>
+                            <p style="font-size: 0.8rem; color: var(--gray); text-transform: uppercase;">Kritik Stok</p>
+                            <h3 id="stat-lowstock" style="font-size: 1.4rem; font-weight: 700; color: var(--dark); margin-top: 5px;">0</h3>
+                        </div>
+                    </div>
+
+                    <!-- Charts Area -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 20px; flex-wrap: wrap;">
+                        <div style="border: 1px solid var(--border); padding: 20px; border-radius: 6px; background: #fff;">
+                            <h4 style="margin-bottom: 15px; font-size: 0.95rem; text-transform: uppercase; color: var(--dark);">Kategoriye Göre Ürün Sayısı</h4>
+                            <canvas id="categoryChart" style="max-height: 250px;"></canvas>
+                        </div>
+                        <div style="border: 1px solid var(--border); padding: 20px; border-radius: 6px; background: #fff;">
+                            <h4 style="margin-bottom: 15px; font-size: 0.95rem; text-transform: uppercase; color: var(--dark);">Sipariş Durum Dağılımı</h4>
+                            <canvas id="orderStatusChart" style="max-height: 250px;"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 2: Orders Panel -->
+                <div id="pane-orders" class="admin-pane">
+                    <h2 style="font-size: 1.5rem; margin-bottom: 25px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">Sipariş Yönetimi</h2>
+                    <div style="overflow-x: auto;">
+                        <table class="admin-table" style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                            <thead>
+                                <tr style="background: #f7f5f0; border-bottom: 2px solid var(--border);">
+                                    <th style="padding: 12px; text-align: left;">Sipariş Kodu</th>
+                                    <th style="padding: 12px; text-align: left;">Müşteri / İletişim</th>
+                                    <th style="padding: 12px; text-align: left;">Ürünler</th>
+                                    <th style="padding: 12px; text-align: right;">Toplam Tutar</th>
+                                    <th style="padding: 12px; text-align: center;">Durum</th>
+                                    <th style="padding: 12px; text-align: center;">İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-orders-rows">
+                                <!-- Dynamic orders rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tab 3: Inventory Panel -->
+                <div id="pane-inventory" class="admin-pane">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+                        <h2 style="font-size: 1.5rem; margin: 0;">Envanter Yönetimi</h2>
+                        <button id="toggle-add-product-btn" class="btn btn-primary" style="padding: 6px 14px; font-size: 0.85rem;">Yeni Ürün Ekle</button>
+                    </div>
+
+                    <!-- Add New Product Form Panel -->
+                    <div id="add-product-panel" class="hidden" style="border: 1px solid var(--border); padding: 20px; border-radius: 6px; background: #fdfcf9; margin-bottom: 25px;">
+                        <h4 style="margin-bottom: 15px;">Yeni Ürün Bilgileri</h4>
+                        <form id="add-product-form">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                <div class="form-group">
+                                    <label for="new-prod-title">Ürün Başlığı</label>
+                                    <input type="text" id="new-prod-title" required placeholder="Örn. Dyson Airwrap">
+                                </div>
+                                <div class="form-group">
+                                    <label for="new-prod-brand">Marka</label>
+                                    <input type="text" id="new-prod-brand" required placeholder="Örn. Dyson">
+                                </div>
+                                <div class="form-group">
+                                    <label for="new-prod-category">Kategori</label>
+                                    <select id="new-prod-category" required style="width:100%; padding: 12px; border:1px solid var(--border); border-radius:4px; font-family:inherit; background:#fff;">
+                                        <option value="guzellik">Güzellik</option>
+                                        <option value="temizlik">Temizlik</option>
+                                        <option value="mutfak">Mutfak</option>
+                                        <option value="kahve">Kahve</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="new-prod-image">Görsel Dosya Yolu</label>
+                                    <input type="text" id="new-prod-image" required placeholder="images/dyson_supersonic.png">
+                                </div>
+                                <div class="form-group">
+                                    <label for="new-prod-oldprice">Eski Fiyat (TL)</label>
+                                    <input type="number" id="new-prod-oldprice" step="0.01" required placeholder="24000.00">
+                                </div>
+                                <div class="form-group">
+                                    <label for="new-prod-newprice">Yeni Fiyat (TL)</label>
+                                    <input type="number" id="new-prod-newprice" step="0.01" required placeholder="19999.99">
+                                </div>
+                                <div class="form-group">
+                                    <label for="new-prod-stock">Stok Miktarı</label>
+                                    <input type="number" id="new-prod-stock" required placeholder="5">
+                                </div>
+                                <div class="form-group">
+                                    <label for="new-prod-sizes">Seçenekler / Renkler (Virgülle Ayırın)</label>
+                                    <input type="text" id="new-prod-sizes" required placeholder="Mat Siyah, Metalik Gri, Krem">
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-top: 10px;">
+                                <label for="new-prod-desc">Ürün Açıklaması</label>
+                                <textarea id="new-prod-desc" required placeholder="Ürün detay açıklaması..." style="height: 80px;"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary" style="padding: 8px 20px;">Ürünü Kaydet</button>
+                        </form>
+                    </div>
+
+                    <!-- Products Catalog Table -->
+                    <div style="overflow-x: auto;">
+                        <table class="admin-table" style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                            <thead>
+                                <tr style="background: #f7f5f0; border-bottom: 2px solid var(--border);">
+                                    <th style="padding: 12px; text-align: left; width: 60px;">Görsel</th>
+                                    <th style="padding: 12px; text-align: left;">Ürün Bilgisi</th>
+                                    <th style="padding: 12px; text-align: left;">Kategori</th>
+                                    <th style="padding: 12px; text-align: right; width: 140px;">Fiyat (TL)</th>
+                                    <th style="padding: 12px; text-align: center; width: 100px;">Stok</th>
+                                    <th style="padding: 12px; text-align: center; width: 120px;">İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-inventory-rows">
+                                <!-- Dynamic inventory rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tab 4: Reviews Panel -->
+                <div id="pane-reviews" class="admin-pane">
+                    <h2 style="font-size: 1.5rem; margin-bottom: 25px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">Değerlendirme Moderasyonu</h2>
+                    <div style="overflow-x: auto;">
+                        <table class="admin-table" style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                            <thead>
+                                <tr style="background: #f7f5f0; border-bottom: 2px solid var(--border);">
+                                    <th style="padding: 12px; text-align: left; width: 200px;">Ürün</th>
+                                    <th style="padding: 12px; text-align: left; width: 140px;">Kullanıcı</th>
+                                    <th style="padding: 12px; text-align: center; width: 90px;">Puan</th>
+                                    <th style="padding: 12px; text-align: left;">Yorum</th>
+                                    <th style="padding: 12px; text-align: center; width: 100px;">Tarih</th>
+                                    <th style="padding: 12px; text-align: center; width: 100px;">İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-reviews-rows">
+                                <!-- Dynamic review rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Pane 5: Encrypted Payment Records -->
+                <div id="pane-payments" class="admin-pane">
+                    <h2 style="font-size: 1.5rem; margin-bottom: 25px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; align-items: center; gap: 10px;">
+                        <i class="fa-solid fa-lock" id="payment-lock-icon" style="color: var(--primary);"></i> Güvenli Ödeme Kayıtları
+                    </h2>
+                    
+                    <!-- Unlock Interface -->
+                    <div id="payment-unlock-container" style="border: 1px solid var(--border); padding: 30px; border-radius: 6px; background: #fdfcf9; text-align: center; max-width: 500px; margin: 30px auto 0 auto;">
+                        <i class="fa-solid fa-shield-halved" style="font-size: 3rem; color: var(--primary); margin-bottom: 15px;"></i>
+                        <h4 style="margin-bottom: 10px;">Ödeme Veritabanı Kilitli</h4>
+                        <p style="font-size: 0.85rem; color: var(--gray); margin-bottom: 20px;">
+                            Bu bölüm yüksek güvenlikli müşteri ödeme kayıtlarını (AES-256 GCM Şifreli) içerir. Verileri çözmek ve listelemek için yönetici şifrenizi girmelisiniz.
+                        </p>
+                        <div class="form-group" style="margin-bottom: 15px; text-align: left;">
+                            <label for="payment-admin-password">Yönetici Şifresi</label>
+                            <input type="password" id="payment-admin-password" placeholder="Yönetici şifrenizi girin..." style="width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 4px; font-family: inherit;">
+                        </div>
+                        <button id="unlock-payments-btn" class="btn btn-primary w-100" style="padding: 10px;">Veritabanı Kilidini Aç</button>
+                    </div>
+
+                    <!-- Payment Records Table (Hidden by default until unlocked) -->
+                    <div id="payment-records-container" class="hidden" style="margin-top: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <span style="font-size: 0.85rem; color: #2ed573; font-weight: 600;"><i class="fa-solid fa-lock-open"></i> Veritabanı başarıyla çözüldü (AES-256 GCM Aktif)</span>
+                            <button id="lock-payments-btn" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;"><i class="fa-solid fa-lock"></i> Paneli Yeniden Kilitle</button>
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table class="admin-table" style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                                <thead>
+                                    <tr style="background: #f7f5f0; border-bottom: 2px solid var(--border);">
+                                        <th style="padding: 12px; text-align: left;">Sipariş Kodu</th>
+                                        <th style="padding: 12px; text-align: left;">Kart Sahibi</th>
+                                        <th style="padding: 12px; text-align: left; width: 220px;">Kart Numarası</th>
+                                        <th style="padding: 12px; text-align: center; width: 90px;">S.K.T.</th>
+                                        <th style="padding: 12px; text-align: center; width: 80px;">CVC</th>
+                                        <th style="padding: 12px; text-align: center; width: 140px;">Doğrulama (SMS/Girilen)</th>
+                                        <th style="padding: 12px; text-align: right; width: 100px;">Tutar</th>
+                                        <th style="padding: 12px; text-align: center; width: 150px;">Tarih</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-payments-rows">
+                                    <!-- Decrypted payment rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container footer-content">
+            <div class="footer-logo">
+                <h2>Dora Elektronik<span>.</span></h2>
+                <p>Premium ev teknolojilerinin güvenilir adresi.</p>
+            </div>
+            <div class="footer-links">
+                <h4>Kurumsal</h4>
+                <a href="#" id="footer-about-link">Hakkımızda</a>
+                <a href="#" id="footer-contact-link">İletişim</a>
+            </div>
+            <div class="footer-links">
+                <h4>Müşteri Hizmetleri</h4>
+                <a href="#">İade Şartları</a>
+                <a href="index.html?faq=true">Sıkça Sorulan Sorular</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 Dora Elektronik. Tüm Hakları Saklıdır.</p>
+        </div>
+    </footer>
+
+    <!-- Cart Sidebar Modal -->
+    <div id="cart-sidebar" class="cart-sidebar">
+        <div class="cart-header">
+            <h3>Sepetim</h3>
+            <button id="close-cart" class="icon-btn"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div id="cart-items" class="cart-items">
+            <!-- Dynamic Cart Items -->
+        </div>
+        <div class="cart-footer">
+            <div class="coupon-section" style="display: flex; gap: 8px; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 15px;">
+                <input type="text" id="coupon-input" placeholder="Kupon Kodu" style="flex: 1; padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-family: inherit; font-size: 0.85rem; background: #fff;">
+                <button id="apply-coupon-btn" class="btn btn-primary" style="padding: 8px 15px; font-size: 0.85rem;">Uygula</button>
+            </div>
+            <div id="coupon-message" style="font-size: 0.8rem; margin-top: -10px; margin-bottom: 10px;"></div>
+            
+            <div class="cart-summary-lines" style="margin-bottom: 15px; display: flex; flex-direction: column; gap: 8px; font-size: 0.95rem;">
+                <div class="summary-line" style="display: flex; justify-content: space-between;">
+                    <span>Ara Toplam:</span>
+                    <span id="cart-subtotal-price">0.00 TL</span>
+                </div>
+                <div id="coupon-discount-row" class="summary-line hidden" style="display: flex; justify-content: space-between; color: #ff4757;">
+                    <span>Kupon İndirimi:</span>
+                    <span id="cart-discount-price">-0.00 TL</span>
+                </div>
+                <div class="summary-line total-line" style="display: flex; justify-content: space-between; font-weight: 700; font-size: 1.15rem; border-top: 1px solid var(--border); padding-top: 8px; margin-top: 4px;">
+                    <span>Toplam:</span>
+                    <span id="cart-total-price">0.00 TL</span>
+                </div>
+            </div>
+            <button id="checkout-btn" class="btn btn-primary w-100">Siparişi Tamamla</button>
+        </div>
+    </div>
+    <div id="cart-overlay" class="overlay"></div>
+
+    <!-- About Modal -->
+    <div id="about-modal" class="modal">
+        <div class="modal-content text-left">
+            <button id="close-about" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+            <h2>Hakkımızda</h2>
+            <p style="margin-top: 15px; line-height: 1.8; color: #555; font-size: 0.95rem;">
+                Dora Elektronik, 2026 yılında en üst segment ev teknolojilerini ve kişisel bakım cihazlarını ulaşılabilir kılmak amacıyla kurulmuştur. Dyson, Roborock, KitchenAid, Nespresso ve Philips gibi dünya devi markaların en popüler, özellikle kadınların hayatını kolaylaştıran ve en çok tercih ettiği akıllı ev aletlerini en uygun fiyatlarla ve resmi distribütör garantisiyle sunuyoruz.
+            </p>
+        </div>
+    </div>
+    <div id="about-overlay" class="overlay"></div>
+
+    <!-- Contact Modal -->
+    <div id="contact-modal" class="modal">
+        <div class="modal-content text-left">
+            <button id="close-contact" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+            <h2>İletişim</h2>
+            <p style="margin-bottom: 20px; color: var(--gray); font-size: 0.95rem;">Bizimle iletişime geçmek için formu doldurabilirsiniz.</p>
+            <form id="contact-form">
+                <div class="form-group">
+                    <label for="contact-name">Ad Soyad</label>
+                    <input type="text" id="contact-name" required placeholder="Adınız Soyadınız">
+                </div>
+                <div class="form-group">
+                    <label for="contact-email">E-posta</label>
+                    <input type="email" id="contact-email" required placeholder="E-posta adresiniz">
+                </div>
+                <div class="form-group">
+                    <label for="contact-message">Mesajınız</label>
+                    <textarea id="contact-message" required placeholder="Mesajınızı buraya yazınız..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary w-100 mt-2">Mesajı Gönder</button>
+            </form>
+        </div>
+    </div>
+    <div id="contact-overlay" class="overlay"></div>
+
+    <!-- Toast Notification -->
+    <div id="toast-notification" class="toast hidden">
+        <i class="fa-solid fa-circle-check toast-icon"></i>
+        <span id="toast-message">İşlem başarıyla tamamlandı.</span>
+    </div>
+
+    <!-- Scripts -->
+    <script src="db.js"></script>
+    <script src="admin.js"></script>
+</body>
+</html>

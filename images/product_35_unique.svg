@@ -1,0 +1,17 @@
+<svg width="500" height="500" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad35" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f2027;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#203a43;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2c5364;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="500" height="500" rx="20" fill="url(#grad35)" />
+  <circle cx="250" cy="250" r="220" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="2" />
+  <text x="250" y="140" font-family="Outfit, sans-serif" font-size="32" font-weight="600" fill="white" text-anchor="middle" dominant-baseline="middle">LatteGo 5400</text>
+<text x="250" y="185" font-family="Outfit, sans-serif" font-size="32" font-weight="600" fill="white" text-anchor="middle" dominant-baseline="middle">Serisi Tam</text>
+<text x="250" y="230" font-family="Outfit, sans-serif" font-size="32" font-weight="600" fill="white" text-anchor="middle" dominant-baseline="middle">Otomatik Kahve</text>
+<text x="250" y="275" font-family="Outfit, sans-serif" font-size="32" font-weight="600" fill="white" text-anchor="middle" dominant-baseline="middle">Makinesi</text>
+
+  <text x="250" y="450" font-family="Outfit, sans-serif" font-size="16" font-weight="300" fill="rgba(255,255,255,0.7)" text-anchor="middle">Premium Series</text>
+</svg>

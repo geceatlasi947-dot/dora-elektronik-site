@@ -1,0 +1,229 @@
+﻿<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- DORA Security: Content Security Policy -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';">
+    <title>Profilim - Dora Elektronik</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Header / Navbar -->
+    <header class="navbar">
+        <div class="container nav-content">
+            <div class="logo">
+                <h1><a href="index.html">Dora Elektronik<span>.</span></a></h1>
+            </div>
+            
+            <!-- Search Box (Redirects to index.html on enter) -->
+            <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                <input type="text" id="search-input" placeholder="Ürün veya marka ara...">
+            </div>
+
+            <nav class="nav-links">
+                <a href="index.html#guzellik" class="nav-link">Güzellik</a>
+                <a href="index.html#temizlik" class="nav-link">Temizlik</a>
+                <a href="index.html#mutfak" class="nav-link">Mutfak</a>
+                <a href="index.html#kahve" class="nav-link">Kahve</a>
+            </nav>
+            <div class="nav-actions" style="display: flex; align-items: center; gap: 15px;">
+                <div id="auth-area" style="display: flex; align-items: center; gap: 10px;">
+                    <!-- Injected dynamically -->
+                </div>
+                <button id="cart-btn" class="icon-btn">
+                    <i class="fa-solid fa-bag-shopping"></i>
+                    <span id="cart-count">0</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Profile Main Container -->
+    <main class="container" style="padding-top: 8rem; padding-bottom: 5rem;">
+        <div class="profile-layout" style="display: grid; grid-template-columns: 280px 1fr; gap: 30px; align-items: start;">
+            
+            <!-- Left Panel: Sidebar menu -->
+            <aside class="profile-sidebar" style="background: white; border: 1px solid var(--border); border-radius: 8px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.02);">
+                <div class="profile-user-card" style="text-align: center; padding-bottom: 20px; border-bottom: 1px solid var(--border); margin-bottom: 20px;">
+                    <div class="user-avatar" style="width: 70px; height: 70px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; font-weight: 600; margin: 0 auto 10px;">
+                        <span id="avatar-letters">U</span>
+                    </div>
+                    <h4 id="sidebar-user-name" style="font-size: 1.05rem; font-weight: 600; color: var(--dark);">Kullanıcı Adı</h4>
+                    <p id="sidebar-user-email" style="font-size: 0.8rem; color: var(--gray);">user@example.com</p>
+                </div>
+                
+                <nav class="profile-nav" style="display: flex; flex-direction: column; gap: 8px;">
+                    <button class="profile-tab-btn active" data-tab="info" style="display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 16px; border: none; background: none; text-align: left; font-family: inherit; font-size: 0.95rem; font-weight: 500; color: var(--dark); cursor: pointer; border-radius: 4px; transition: var(--transition);">
+                        <i class="fa-regular fa-user" style="font-size: 1.05rem;"></i> Üyelik Bilgilerim
+                    </button>
+                    <button class="profile-tab-btn" data-tab="address" style="display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 16px; border: none; background: none; text-align: left; font-family: inherit; font-size: 0.95rem; font-weight: 500; color: var(--gray); cursor: pointer; border-radius: 4px; transition: var(--transition);">
+                        <i class="fa-regular fa-map" style="font-size: 1.05rem;"></i> Adres Bilgilerim
+                    </button>
+                    <button class="profile-tab-btn" data-tab="orders" style="display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 16px; border: none; background: none; text-align: left; font-family: inherit; font-size: 0.95rem; font-weight: 500; color: var(--gray); cursor: pointer; border-radius: 4px; transition: var(--transition);">
+                        <i class="fa-solid fa-box-open" style="font-size: 1.05rem;"></i> Siparişlerim
+                    </button>
+                    <button id="sidebar-logout-btn" style="display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 16px; border: none; background: none; text-align: left; font-family: inherit; font-size: 0.95rem; font-weight: 500; color: #ff4757; cursor: pointer; border-radius: 4px; transition: var(--transition); margin-top: 15px; border-top: 1px solid var(--border); padding-top: 15px;">
+                        <i class="fa-solid fa-arrow-right-from-bracket"></i> Çıkış Yap
+                    </button>
+                </nav>
+            </aside>
+
+            <!-- Right Panel: Dynamic Content Panes -->
+            <section class="profile-content" style="background: white; border: 1px solid var(--border); border-radius: 8px; padding: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); min-height: 400px; text-align: left;">
+                
+                <!-- Pane 1: Üyelik Bilgileri -->
+                <div id="pane-info" class="profile-pane">
+                    <h2 style="font-size: 1.5rem; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">Üyelik Bilgilerim</h2>
+                    <form id="profile-info-form">
+                        <div class="form-group">
+                            <label for="profile-name">Ad Soyad</label>
+                            <input type="text" id="profile-name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="profile-email">E-posta Adresi (Değiştirilemez)</label>
+                            <input type="email" id="profile-email" readonly style="background-color: #f7f5f0; cursor: not-allowed; color: var(--gray);">
+                        </div>
+                        <div class="form-group">
+                            <label for="profile-phone">Telefon Numarası</label>
+                            <input type="tel" id="profile-phone" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="margin-top: 10px;">Bilgilerimi Güncelle</button>
+                    </form>
+                </div>
+
+                <!-- Pane 2: Adres Bilgileri -->
+                <div id="pane-address" class="profile-pane hidden">
+                    <h2 style="font-size: 1.5rem; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">Kayıtlı Adreslerim</h2>
+                    <form id="profile-address-form">
+                        <div class="form-group">
+                            <label for="profile-address">Varsayılan Teslimat Adresi</label>
+                            <textarea id="profile-address" required style="height: 120px;"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Adresi Kaydet</button>
+                    </form>
+                </div>
+
+                <!-- Pane 3: Siparişlerim -->
+                <div id="pane-orders" class="profile-pane hidden">
+                    <h2 style="font-size: 1.5rem; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">Siparişlerim</h2>
+                    <div id="orders-list-container">
+                        <!-- Orders will be injected dynamically -->
+                    </div>
+                </div>
+
+            </section>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container footer-content">
+            <div class="footer-logo">
+                <h2>Dora Elektronik<span>.</span></h2>
+                <p>Premium ev teknolojilerinin güvenilir adresi.</p>
+            </div>
+            <div class="footer-links">
+                <h4>Kurumsal</h4>
+                <a href="#" id="footer-about-link">Hakkımızda</a>
+                <a href="#" id="footer-contact-link">İletişim</a>
+            </div>
+            <div class="footer-links">
+                <h4>Müşteri Hizmetleri</h4>
+                <a href="#">İade Şartları</a>
+                <a href="index.html?faq=true">Sıkça Sorulan Sorular</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 Dora Elektronik. Tüm Hakları Saklıdır.</p>
+        </div>
+    </footer>
+
+    <!-- Cart Sidebar Modal -->
+    <div id="cart-sidebar" class="cart-sidebar">
+        <div class="cart-header">
+            <h3>Sepetim</h3>
+            <button id="close-cart" class="icon-btn"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div id="cart-items" class="cart-items">
+            <!-- Cart items injected dynamically -->
+        </div>
+        <div class="cart-footer">
+            <div class="coupon-section" style="display: flex; gap: 8px; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 15px;">
+                <input type="text" id="coupon-input" placeholder="Kupon Kodu" style="flex: 1; padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-family: inherit; font-size: 0.85rem; background: #fff;">
+                <button id="apply-coupon-btn" class="btn btn-primary" style="padding: 8px 15px; font-size: 0.85rem;">Uygula</button>
+            </div>
+            <div id="coupon-message" style="font-size: 0.8rem; margin-top: -10px; margin-bottom: 10px;"></div>
+            
+            <div class="cart-summary-lines" style="margin-bottom: 15px; display: flex; flex-direction: column; gap: 8px; font-size: 0.95rem;">
+                <div class="summary-line" style="display: flex; justify-content: space-between;">
+                    <span>Ara Toplam:</span>
+                    <span id="cart-subtotal-price">0.00 TL</span>
+                </div>
+                <div id="coupon-discount-row" class="summary-line hidden" style="display: flex; justify-content: space-between; color: #ff4757;">
+                    <span>Kupon İndirimi:</span>
+                    <span id="cart-discount-price">-0.00 TL</span>
+                </div>
+                <div class="summary-line total-line" style="display: flex; justify-content: space-between; font-weight: 700; font-size: 1.15rem; border-top: 1px solid var(--border); padding-top: 8px; margin-top: 4px;">
+                    <span>Toplam:</span>
+                    <span id="cart-total-price">0.00 TL</span>
+                </div>
+            </div>
+            <button id="checkout-btn" class="btn btn-primary w-100">Siparişi Tamamla</button>
+        </div>
+    </div>
+    <div id="cart-overlay" class="overlay"></div>
+
+    <!-- About Modal -->
+    <div id="about-modal" class="modal">
+        <div class="modal-content text-left">
+            <button id="close-about" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+            <h2>Hakkımızda</h2>
+            <p style="margin-top: 15px; line-height: 1.8; color: #555; font-size: 0.95rem;">
+                Dora Elektronik, 2026 yılında en üst segment ev teknolojilerini ve kişisel bakım cihazlarını ulaşılabilir kılmak amacıyla kurulmuştur. Dyson, Roborock, KitchenAid, Nespresso and Philips gibi dünya devi markaların en popüler, özellikle kadınların hayatını kolaylaştıran ve en çok tercih ettiği akıllı ev aletlerini en uygun fiyatlarla ve resmi distribütör garantisiyle sunuyoruz.
+            </p>
+        </div>
+    </div>
+    <div id="about-overlay" class="overlay"></div>
+
+    <!-- Contact Modal -->
+    <div id="contact-modal" class="modal">
+        <div class="modal-content text-left">
+            <button id="close-contact" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+            <h2>İletişim</h2>
+            <p style="margin-bottom: 20px; color: var(--gray); font-size: 0.95rem;">Bizimle iletişime geçmek için formu doldurabilirsiniz.</p>
+            <form id="contact-form">
+                <div class="form-group">
+                    <label for="contact-name">Ad Soyad</label>
+                    <input type="text" id="contact-name" required placeholder="Adınız Soyadınız">
+                </div>
+                <div class="form-group">
+                    <label for="contact-email">E-posta</label>
+                    <input type="email" id="contact-email" required placeholder="E-posta adresiniz">
+                </div>
+                <div class="form-group">
+                    <label for="contact-message">Mesajınız</label>
+                    <textarea id="contact-message" required placeholder="Mesajınızı buraya yazınız..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary w-100 mt-2">Mesajı Gönder</button>
+            </form>
+        </div>
+    </div>
+    <div id="contact-overlay" class="overlay"></div>
+
+    <!-- Toast Notification -->
+    <div id="toast-notification" class="toast hidden">
+        <i class="fa-solid fa-circle-check toast-icon"></i>
+        <span id="toast-message">İşlem başarıyla tamamlandı.</span>
+    </div>
+
+    <!-- Scripts -->
+    <script src="db.js"></script>
+    <script src="profile.js"></script>
+    <script src="chat.js"></script>
+</body>
+</html>

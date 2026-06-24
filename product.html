@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- DORA Security: Content Security Policy -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';">
+    <title>Ürün Detayı - Dora Elektronik</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css?v=2">
+</head>
+<body>
+
+    <!-- Header / Navbar -->
+    <header class="navbar">
+        <div class="container nav-content">
+            <div class="logo">
+                <h1><a href="index.html">Dora Elektronik<span>.</span></a></h1>
+            </div>
+            
+            <!-- Search Box -->
+            <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                <input type="text" id="search-input" placeholder="Ürün veya marka ara...">
+            </div>
+
+            <nav class="nav-links">
+                <a href="index.html#guzellik" class="nav-link">Güzellik</a>
+                <a href="index.html#temizlik" class="nav-link">Temizlik</a>
+                <a href="index.html#mutfak" class="nav-link">Mutfak</a>
+                <a href="index.html#kahve" class="nav-link">Kahve</a>
+            </nav>
+            <div class="nav-actions" style="display: flex; align-items: center; gap: 15px;">
+                <!-- Auth Area -->
+                <div id="auth-area" style="display: flex; align-items: center; gap: 10px;">
+                    <button id="login-nav-btn" class="btn btn-secondary" style="padding: 6px 14px; font-size: 0.85rem; border-radius: 20px;">Giriş Yap</button>
+                </div>
+                <button id="cart-btn" class="icon-btn">
+                    <i class="fa-solid fa-bag-shopping"></i>
+                    <span id="cart-count">0</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Detail Section -->
+    <main class="container product-detail-section">
+        <a href="index.html" class="back-link">
+            <i class="fa-solid fa-arrow-left"></i> Alışverişe Devam Et
+        </a>
+        
+        <div class="product-detail-grid">
+            <!-- Left: Product Image Gallery & Poses -->
+            <div class="product-gallery">
+                <div class="detail-img-container" id="zoom-img-container">
+                    <div id="detail-stock-badge" class="stock-badge"></div>
+                    <img id="detail-product-img" src="" alt="Ürün Görseli" class="filter-none">
+                </div>
+                
+                <div class="thumbnail-selector">
+                    <button id="thumb-pose-1" class="thumb-btn active" type="button">
+                        <img id="detail-thumb-img-1" src="" alt="Poz 1">
+                    </button>
+                    <button id="thumb-pose-2" class="thumb-btn" type="button">
+                        <img id="detail-thumb-img-2" src="" alt="Poz 2" style="transform: scaleX(-1);">
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right: Product Details -->
+            <div class="detail-info">
+                <div id="detail-brand" class="detail-brand">MARKA</div>
+                <h2 id="detail-title" class="detail-title">Ürün Adı</h2>
+                
+                <div class="detail-price-box">
+                    <span id="detail-old-price" class="detail-old-price">0.00 TL</span>
+                    <span id="detail-new-price" class="detail-new-price">0.00 TL</span>
+                    <span id="detail-discount-badge" class="detail-discount">%0 İndirim</span>
+                </div>
+
+                <p id="detail-desc" class="detail-description">
+                    Ürün açıklaması yükleniyor...
+                </p>
+
+
+                <!-- Option/Size Selector -->
+                <div class="detail-selector">
+                    <div class="selector-label" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                        <span id="selector-title">Renk/Model Seçin</span>
+                        <a href="#" id="size-guide-link" style="color: var(--primary); text-transform: none; font-weight: 600; font-size: 0.8rem; letter-spacing: 0; display: inline-flex; align-items: center; gap: 5px;"><i class="fa-solid fa-bolt"></i> Güç & Voltaj Rehberi</a>
+                        <span id="detail-stock-status" class="stock-status" style="margin-left: auto;">Stok Durumu</span>
+                    </div>
+                    <div id="detail-sizes" class="size-selector">
+                        <!-- Sizes will be injected dynamically -->
+                    </div>
+                </div>
+
+                <!-- Add to Cart -->
+                <div class="detail-actions" style="display: flex; gap: 15px; align-items: center; margin-bottom: 25px;">
+                    <div class="quantity-selector" style="display: flex; align-items: center; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; background: #fff; height: 50px;">
+                        <button type="button" id="qty-minus" class="qty-btn" style="width: 40px; height: 100%; border: none; background: none; cursor: pointer; font-size: 1.1rem; color: var(--dark); transition: background 0.2s;"><i class="fa-solid fa-minus"></i></button>
+                        <input type="number" id="qty-input" value="1" min="1" style="width: 50px; height: 100%; border: none; border-left: 1px solid var(--border); border-right: 1px solid var(--border); text-align: center; font-size: 1rem; font-family: inherit; font-weight: 600; -moz-appearance: textfield; background: #fff; pointer-events: none;" readonly>
+                        <button type="button" id="qty-plus" class="qty-btn" style="width: 40px; height: 100%; border: none; background: none; cursor: pointer; font-size: 1.1rem; color: var(--dark); transition: background 0.2s;"><i class="fa-solid fa-plus"></i></button>
+                    </div>
+                    <button id="detail-add-to-cart-btn" class="btn btn-primary" style="flex: 1; padding: 0 28px; font-size: 1.05rem; height: 50px; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                        Sepete Ekle
+                    </button>
+                </div>
+
+                <!-- Tabs -->
+                <div class="detail-tabs">
+                    <div class="tab-headers">
+                        <button class="tab-btn active" data-tab="details">Ürün Detayları</button>
+                        <button class="tab-btn" data-tab="shipping">Kargo & İade</button>
+                        <button class="tab-btn" data-tab="reviews">Değerlendirmeler (<span id="reviews-count-tab">0</span>)</button>
+                    </div>
+                    <div class="tab-content">
+                        <div id="tab-details" class="tab-pane">
+                            <ul>
+                                <li>%100 Orijinal Distribütör Garantili Ürünler</li>
+                                <li>En son teknoloji ve üstün performanslı premium modeller</li>
+                                <li>Resmi distribütör veya doğrudan marka güvencesiyle 2 yıl garanti</li>
+                                <li>Uluslararası standartlara uygun güç ve voltaj sertifikalı</li>
+                            </ul>
+                        </div>
+                        <div id="tab-shipping" class="tab-pane hidden">
+                            <p>Siparişleriniz en geç 24 saat içinde kargoya teslim edilmektedir. 1500 TL ve üzeri alışverişlerinizde kargo ücretsizdir. Ürün kullanılmadığı takdirde 14 gün içerisinde iade garantisi mevcuttur.</p>
+                        </div>
+                        <div id="tab-reviews" class="tab-pane hidden">
+                            <!-- Review Summary Distribution Chart -->
+                            <div class="reviews-summary-container">
+                                <div class="avg-score-box">
+                                    <div class="avg-score-number" id="avg-rating-value">0.0</div>
+                                    <div class="avg-score-stars" id="avg-rating-stars">
+                                        <!-- Will hold average stars dynamically -->
+                                    </div>
+                                    <div class="avg-score-total" id="total-reviews-count">0 değerlendirme</div>
+                                </div>
+                                <div class="rating-distribution-chart" id="stars-distribution-bars">
+                                    <!-- Dynamic bars populated by product.js -->
+                                </div>
+                            </div>
+
+                            <!-- Review List -->
+                            <div id="reviews-list" class="reviews-list" style="max-height: 250px; overflow-y: auto; margin-bottom: 20px; text-align: left;">
+                                <!-- Inject comments dynamically -->
+                            </div>
+                            <!-- Write Review Form -->
+                            <form id="review-form" style="border-top: 1px solid var(--border); padding-top: 15px; text-align: left;">
+                                <h4 style="margin-bottom: 10px; font-size: 0.95rem; text-transform: uppercase;">Yorum Yap</h4>
+                                <div class="form-group" style="margin-bottom: 8px;">
+                                    <label style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; display: block; margin-bottom: 4px;">Puanınız</label>
+                                    <div class="rating-stars-input" id="rating-stars-input" style="font-size: 1.2rem; color: #ccc; cursor: pointer; display: flex; gap: 5px; margin-bottom: 8px;">
+                                        <i class="fa-solid fa-star star-select" data-value="1"></i>
+                                        <i class="fa-solid fa-star star-select" data-value="2"></i>
+                                        <i class="fa-solid fa-star star-select" data-value="3"></i>
+                                        <i class="fa-solid fa-star star-select" data-value="4"></i>
+                                        <i class="fa-solid fa-star star-select" data-value="5"></i>
+                                    </div>
+                                </div>
+                                <div class="form-group" style="margin-bottom: 8px;">
+                                    <input type="text" id="review-author" required placeholder="Adınız Soyadınız" style="padding: 8px; font-size: 0.85rem;">
+                                </div>
+                                <div class="form-group" style="margin-bottom: 8px;">
+                                    <textarea id="review-text" required placeholder="Yorumunuzu buraya yazın..." style="height: 60px; padding: 8px; font-size: 0.85rem;"></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-primary" style="padding: 8px 20px; font-size: 0.85rem;">Gönder</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Related Products Section -->
+        <section class="related-section">
+            <div class="section-header" style="margin-bottom: 3rem; text-align: left;">
+                <h3>İlginizi Çekebilecek <em>Diğer</em> Tasarımlar</h3>
+                <p>Sizin için özenle seçtiğimiz premium ev teknolojileri</p>
+            </div>
+            <div id="related-grid" class="grid">
+                <!-- Related products injected here -->
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container footer-content">
+            <div class="footer-logo">
+                <h2>Dora Elektronik<span>.</span></h2>
+                <p>Premium ev teknolojilerinin güvenilir adresi.</p>
+            </div>
+            <div class="footer-links">
+                <h4>Kurumsal</h4>
+                <a href="#" id="footer-about-link">Hakkımızda</a>
+                <a href="#" id="footer-contact-link">İletişim</a>
+            </div>
+            <div class="footer-links">
+                <h4>Müşteri Hizmetleri</h4>
+                <a href="#">İade Şartları</a>
+                <a href="#" id="footer-faq-link">Sıkça Sorulan Sorular</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 Dora Elektronik. Tüm Hakları Saklıdır.</p>
+        </div>
+    </footer>
+
+    <!-- Cart Sidebar Modal -->
+    <div id="cart-sidebar" class="cart-sidebar">
+        <div class="cart-header">
+            <h3>Sepetim</h3>
+            <button id="close-cart" class="icon-btn"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div id="cart-items" class="cart-items">
+            <!-- Cart items injected dynamically -->
+        </div>
+        <div class="cart-footer">
+            <!-- Coupon Section -->
+            <div class="coupon-section" style="display: flex; gap: 8px; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 15px;">
+                <input type="text" id="coupon-input" placeholder="Kupon Kodu (PREMIUM20)" style="flex: 1; padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-family: inherit; font-size: 0.85rem; background: #fff;">
+                <button id="apply-coupon-btn" class="btn btn-primary" style="padding: 8px 15px; font-size: 0.85rem;">Uygula</button>
+            </div>
+            <div id="coupon-message" style="font-size: 0.8rem; margin-top: -10px; margin-bottom: 10px; text-align: left;"></div>
+            
+            <div class="cart-summary-lines" style="margin-bottom: 15px; display: flex; flex-direction: column; gap: 8px; font-size: 0.95rem;">
+                <div class="summary-line" style="display: flex; justify-content: space-between;">
+                    <span>Ara Toplam:</span>
+                    <span id="cart-subtotal-price">0.00 TL</span>
+                </div>
+                <div id="coupon-discount-row" class="summary-line hidden" style="display: flex; justify-content: space-between; color: #ff4757;">
+                    <span>Kupon İndirimi:</span>
+                    <span id="cart-discount-price">-0.00 TL</span>
+                </div>
+                <div class="summary-line total-line" style="display: flex; justify-content: space-between; font-weight: 700; font-size: 1.15rem; border-top: 1px solid var(--border); padding-top: 8px; margin-top: 4px;">
+                    <span>Toplam:</span>
+                    <span id="cart-total-price">0.00 TL</span>
+                </div>
+            </div>
+            <button id="checkout-btn" class="btn btn-primary w-100">Siparişi Tamamla</button>
+        </div>
+    </div>
+    <div id="cart-overlay" class="overlay"></div>
+
+    <!-- Checkout Modal -->
+    <div id="checkout-modal" class="modal">
+        <div class="modal-content text-left">
+            <button id="close-checkout" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+            
+            <!-- Step 1: Teslimat Bilgileri -->
+            <div id="checkout-step-1" class="checkout-step">
+                <h2>Teslimat Bilgileri</h2>
+                <p style="margin-bottom: 20px; color: var(--gray); font-size: 0.95rem;">Lütfen teslimat ve iletişim bilgilerinizi giriniz.</p>
+                <form id="delivery-form">
+                    <div class="form-group">
+                        <label for="checkout-name">Ad Soyad</label>
+                        <input type="text" id="checkout-name" required placeholder="Örn. Selin Yılmaz">
+                    </div>
+                    <div class="form-group">
+                        <label for="checkout-email">E-posta Adresi</label>
+                        <input type="email" id="checkout-email" required placeholder="Örn. selin@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="checkout-phone">Telefon Numarası</label>
+                        <input type="tel" id="checkout-phone" required placeholder="Örn. 0555 123 4567">
+                    </div>
+                    <div class="form-group">
+                        <label for="checkout-address">Teslimat Adresi</label>
+                        <textarea id="checkout-address" required placeholder="Mahalle, Cadde, Sokak, No, Daire, İlçe/İl"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 mt-4">Devam Et</button>
+                </form>
+            </div>
+
+            <!-- Step 2: Sipariş Onayı ve Doğrulama -->
+            <div id="checkout-step-2" class="checkout-step hidden">
+                <h2>Sipariş Doğrulama</h2>
+                <p style="margin-bottom: 20px; color: var(--gray); font-size: 0.95rem;">Girdiğiniz bilgileri kontrol ederek siparişi onaylayınız.</p>
+                
+                <div class="summary-box">
+                    <h4>Teslimat Adresi</h4>
+                    <p id="summary-address-details"></p>
+                    
+                    <h4>İletişim Bilgileri</h4>
+                    <p id="summary-contact-details"></p>
+                </div>
+                
+                <div class="summary-box mt-3">
+                    <h4>Ödeme Bilgileri</h4>
+                    
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label for="installment-options-prod">Taksit Seçenekleri</label>
+                        <select id="installment-options-prod" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 4px; font-family: inherit; font-size: 0.9rem;">
+                            <option value="1">Tek Çekim (Peşin)</option>
+                            <option value="12">12 Ay Taksit</option>
+                            <option value="24">24 Ay Taksit</option>
+                            <option value="36">36 Ay Taksit</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="card-name">Kart Üzerindeki İsim</label>
+                        <input type="text" id="card-name" required placeholder="Örn. Selin Yılmaz">
+                    </div>
+                    <div class="form-group">
+                        <label for="card-number">Kart Numarası</label>
+                        <input type="text" id="card-number" required placeholder="16 Haneli Kart Numarası" maxlength="19">
+                    </div>
+                    <div style="display: flex; gap: 15px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label for="card-expiry">Son Kullanma (AA/YY)</label>
+                            <input type="text" id="card-expiry" required placeholder="AA/YY" maxlength="5">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label for="card-cvc">CVC</label>
+                            <input type="password" id="card-cvc" required placeholder="CVC" maxlength="3">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="checkout-actions mt-4">
+                    <button id="back-to-step-1" type="button" class="btn btn-secondary">Geri Dön</button>
+                    <button id="confirm-order-btn" type="button" class="btn btn-primary">Siparişi Onayla</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="checkout-overlay" class="overlay"></div>
+
+    <!-- Success Modal -->
+    <div id="success-modal" class="modal">
+        <div class="modal-content">
+            <div class="success-icon">
+                <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <h2>Siparişiniz Başarıyla Alındı!</h2>
+            <p>Bizi tercih ettiğiniz için teşekkür ederiz. Sipariş detaylarınız kısa süre içinde mail adresinize iletilecektir.</p>
+            <p id="success-order-code" style="font-weight: 600; margin-top: 15px; font-size: 1.1rem; color: var(--primary);"></p>
+            <button id="close-success" class="btn btn-primary mt-4">Alışverişe Dön</button>
+        </div>
+    </div>
+    <div id="success-overlay" class="overlay"></div>
+
+    <!-- Order Rating Modal -->
+    <div id="order-rating-modal" class="modal" style="max-width: 450px; z-index: 10007;">
+        <div class="modal-content text-center">
+            <div class="rating-icon" style="font-size: 3rem; color: #ffa502; margin-bottom: 15px;">
+                <i class="fa-regular fa-star"></i>
+            </div>
+            <h2>Siparişi Değerlendirin</h2>
+            <p style="font-size: 0.95rem; color: var(--gray); margin-bottom: 20px;">Alışveriş deneyiminizi değerlendirmek ister misiniz? Geri bildirimleriniz bizim için çok değerlidir.</p>
+            
+            <form id="order-rating-form">
+                <div class="order-rating-stars" style="font-size: 2.2rem; display: flex; justify-content: center; gap: 10px; margin-bottom: 20px;">
+                    <i class="fa-regular fa-star order-star-select" data-rating="1" style="cursor: pointer; color: #ccc; transition: transform 0.2s, color 0.2s;"></i>
+                    <i class="fa-regular fa-star order-star-select" data-rating="2" style="cursor: pointer; color: #ccc; transition: transform 0.2s, color 0.2s;"></i>
+                    <i class="fa-regular fa-star order-star-select" data-rating="3" style="cursor: pointer; color: #ccc; transition: transform 0.2s, color 0.2s;"></i>
+                    <i class="fa-regular fa-star order-star-select" data-rating="4" style="cursor: pointer; color: #ccc; transition: transform 0.2s, color 0.2s;"></i>
+                    <i class="fa-regular fa-star order-star-select" data-rating="5" style="cursor: pointer; color: #ccc; transition: transform 0.2s, color 0.2s;"></i>
+                </div>
+                
+                <input type="hidden" id="selected-order-rating" value="0">
+                
+                <div class="form-group text-left" style="margin-bottom: 15px;">
+                    <label for="rating-author" style="font-weight: 600; font-size: 0.85rem; color: var(--dark); display: block; margin-bottom: 5px;">Ad Soyad</label>
+                    <input type="text" id="rating-author" required placeholder="Adınız Soyadınız" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 4px; font-family: inherit;">
+                </div>
+                
+                <div class="form-group text-left" style="margin-bottom: 15px;">
+                    <label for="rating-text" style="font-weight: 600; font-size: 0.85rem; color: var(--dark); display: block; margin-bottom: 5px;">Yorumunuz (Opsiyonel)</label>
+                    <textarea id="rating-text" placeholder="Deneyiminizi buraya yazabilirsiniz..." style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 4px; font-family: inherit; resize: vertical; min-height: 80px;"></textarea>
+                </div>
+                
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button type="button" id="skip-rating-btn" class="btn btn-secondary" style="flex: 1;">Geç</button>
+                    <button type="submit" id="submit-rating-btn" class="btn btn-primary" style="flex: 1;" disabled>Gönder</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="order-rating-overlay" class="overlay" style="z-index: 10006;"></div>
+
+    <!-- About Modal -->
+    <div id="about-modal" class="modal">
+        <div class="modal-content text-left">
+            <button id="close-about" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+            <h2>Hakkımızda</h2>
+            <p style="margin-top: 15px; line-height: 1.8; color: #555; font-size: 0.95rem;">
+                Dora Elektronik, 2026 yılında en üst segment ev teknolojilerini ve kişisel bakım cihazlarını ulaşılabilir kılmak amacıyla kurulmuştur. Dyson, Roborock, KitchenAid, Nespresso ve Philips gibi dünya devi markaların en popüler, özellikle kadınların hayatını kolaylaştıran ve en çok tercih ettiği akıllı ev aletlerini en uygun fiyatlarla ve resmi distribütör garantisiyle sunuyoruz.
+            </p>
+        </div>
+    </div>
+    <div id="about-overlay" class="overlay"></div>
+
+    <!-- Contact Modal -->
+    <div id="contact-modal" class="modal">
+        <div class="modal-content text-left">
+            <button id="close-contact" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+            <h2>İletişim</h2>
+            <p style="margin-bottom: 20px; color: var(--gray); font-size: 0.95rem;">Bizimle iletişime geçmek için formu doldurabilirsiniz.</p>
+            <form id="contact-form">
+                <div class="form-group">
+                    <label for="contact-name">Ad Soyad</label>
+                    <input type="text" id="contact-name" required placeholder="Adınız Soyadınız">
+                </div>
+                <div class="form-group">
+                    <label for="contact-email">E-posta</label>
+                    <input type="email" id="contact-email" required placeholder="E-posta adresiniz">
+                </div>
+                <div class="form-group">
+                    <label for="contact-message">Mesajınız</label>
+                    <textarea id="contact-message" required placeholder="Mesajınızı buraya yazınız..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary w-100 mt-2">Mesajı Gönder</button>
+            </form>
+        </div>
+    </div>
+    <div id="contact-overlay" class="overlay"></div>
+
+    <!-- FAQ (SSS) Modal -->
+    <div id="faq-modal" class="modal" style="max-width: 650px; z-index: 10003;">
+        <div class="modal-content text-left">
+            <button id="close-faq" class="close-btn" type="button"><i class="fa-solid fa-xmark"></i></button>
+            <h2 style="margin-bottom: 5px;"><i class="fa-regular fa-circle-question" style="color: var(--primary); margin-right: 8px;"></i> Sıkça Sorulan Sorular</h2>
+            <p style="color: var(--gray); font-size: 0.9rem; margin-bottom: 15px;">Alışveriş deneyiminizle ilgili en çok merak edilen konular.</p>
+            
+            <div class="faq-accordion">
+                <div class="faq-item">
+                    <button class="faq-question" type="button">Ürünler orijinal mi? <i class="fa-solid fa-chevron-down"></i></button>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content">
+                            Evet, Dora Elektronik olarak sunduğumuz tüm ürünler (Dyson, Roborock, KitchenAid, Nespresso, Philips vb.) %100 orijinaldir. Ürünlerimiz yetkili distribütörlerden veya doğrudan marka distribütörlerinden faturalı ve 2 yıl resmi garantili olarak tedarik edilir.
+                        </div>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-question" type="button">Kargo ücreti ne kadar ve teslimat kaç gün sürer? <i class="fa-solid fa-chevron-down"></i></button>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content">
+                            1500 TL ve üzeri tüm siparişlerinizde kargo ücretsizdir. Bu tutarın altındaki siparişlerinizde kargo ücreti standart 75 TL'dir. Siparişleriniz en geç 24 saat içerisinde kargoya teslim edilmekte olup, bulunduğunuz ile bağlı olarak 1-3 iş günü içerisinde adresinize ulaştırılır.
+                        </div>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-question" type="button">Değişim ve iade şartlarınız nelerdir? <i class="fa-solid fa-chevron-down"></i></button>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content">
+                            Satın aldığınız elektronik ürünleri, teslim aldığınız tarihten itibaren 14 gün içerisinde iade veya değişim hakkınız bulunmaktadır. İade edilecek ürünlerin orijinal ambalajında, kullanılmamış, aksesuarları eksiksiz ve koruma bandı/etiketleri sökülmemiş olması gerekmektedir. Hijyen gerektiren kişisel bakım ve saç şekillendirme ürünlerinde kutusu açılmış ürünlerin iadesi hijyen kuralları ve kanun gereği kabul edilememektedir.
+                        </div>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-question" type="button">Ödeme yöntemleriniz nelerdir? Güvenli midir? <i class="fa-solid fa-chevron-down"></i></button>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content">
+                            Kredi kartı ve banka kartları ile güvenle ödeme yapabilirsiniz. Sitemizdeki tüm ödeme işlemleri 256-bit SSL şifreleme ve 3D Secure güvenli doğrulama sistemi ile korunmaktadır. Kart bilgileriniz hiçbir şekilde sistemimizde veya veri tabanımızda saklanmaz.
+                        </div>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-question" type="button">Kupon kodlarını nasıl kullanabilirim? <i class="fa-solid fa-chevron-down"></i></button>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content">
+                            Sepetinizde bulunan "Kupon Kodu" alanına geçerli kupon kodunu (örneğin ilk alışverişinize özel %20 indirim sağlayan <strong>DORA20</strong> kodunu) yazıp "Uygula" butonuna basarak sepet tutarınızı anında güncelleyebilirsiniz.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="faq-overlay" class="overlay" style="z-index: 10002;"></div>
+
+    <!-- Size Guide Modal -->
+    <div id="size-guide-modal" class="modal" style="max-width: 500px; z-index: 10003;">
+        <div class="modal-content text-left">
+            <button id="close-size-guide" class="close-btn" type="button"><i class="fa-solid fa-xmark"></i></button>
+            <h2><i class="fa-solid fa-bolt" style="color: var(--primary); margin-right: 8px;"></i> Güç & Voltaj Rehberi</h2>
+            <p style="color: var(--gray); font-size: 0.9rem; margin-bottom: 20px;">Ürünlerimizin elektrik ve çalışma gerilimi bilgileri (Avrupa standardı).</p>
+            
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 0.9rem;">
+                <thead>
+                    <tr style="border-bottom: 2px solid var(--border); font-weight: 600; text-align: left; background: #faf9f6;">
+                        <th style="padding: 10px;">Cihaz Tipi</th>
+                        <th style="padding: 10px;">Güç (Watt)</th>
+                        <th style="padding: 10px;">Voltaj (V)</th>
+                        <th style="padding: 10px;">Frekans (Hz)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 10px; font-weight: 600;">Saç Şekillendirme</td>
+                        <td style="padding: 10px;">1300W - 1600W</td>
+                        <td style="padding: 10px;">220V - 240V</td>
+                        <td style="padding: 10px;">50Hz - 60Hz</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 10px; font-weight: 600;">Robot Süpürge</td>
+                        <td style="padding: 10px;">60W - 75W (Şarj)</td>
+                        <td style="padding: 10px;">100V - 240V</td>
+                        <td style="padding: 10px;">50Hz - 60Hz</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 10px; font-weight: 600;">Stand Mikser</td>
+                        <td style="padding: 10px;">300W</td>
+                        <td style="padding: 10px;">220V - 240V</td>
+                        <td style="padding: 10px;">50Hz - 60Hz</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 10px; font-weight: 600;">Kahve Makinesi</td>
+                        <td style="padding: 10px;">1400W - 1700W</td>
+                        <td style="padding: 10px;">220V - 240V</td>
+                        <td style="padding: 10px;">50Hz - 60Hz</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div style="font-size: 0.8rem; color: var(--gray); line-height: 1.4;">
+                <i class="fa-solid fa-circle-info" style="color: var(--primary); margin-right: 4px;"></i> Güvenlik İpucu: Tüm elektronik cihazlarımız Türkiye şebeke voltajına (220-240V) tam uyumludur ve priz dönüştürücü gerektirmez.
+            </div>
+        </div>
+    </div>
+    <div id="size-guide-overlay" class="overlay" style="z-index: 10002;"></div>
+
+    <!-- Toast Notification -->
+    <div id="toast-notification" class="toast hidden">
+        <i class="fa-solid fa-circle-check toast-icon"></i>
+        <span id="toast-message">İşlem başarıyla tamamlandı.</span>
+    </div>
+
+
+    <!-- Login Modal -->
+    <div id="login-modal" class="modal" style="z-index: 10003;">
+        <div class="modal-content text-left">
+            <button id="close-login" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+            <h2>Giriş Yap</h2>
+            <p style="margin-bottom: 20px; color: var(--gray); font-size: 0.95rem;">Lütfen e-posta adresinizi ve şifrenizi giriniz.</p>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="login-email">E-posta Adresi</label>
+                    <input type="email" id="login-email" required placeholder="Örn. customer@doraelektronik.com">
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Şifre</label>
+                    <input type="password" id="login-password" required placeholder="Şifreniz (Örn. customer1234)">
+                </div>
+                <div id="login-helper-box" style="margin-bottom: 15px; padding: 12px; background: #faf9f6; border: 1px solid var(--border); border-radius: 4px; font-size: 0.85rem; display: none;">
+                    <div style="font-weight: 600; margin-bottom: 5px; color: var(--dark);"><i class="fa-solid fa-circle-info" style="color: var(--primary); margin-right: 5px;"></i> Yönetici Giriş Bilgileri</div>
+                    <div style="color: var(--gray); margin-bottom: 8px; font-size: 0.8rem;">Yönetim paneline erişmek için aşağıdaki bilgileri kullanabilir veya tek tıkla giriş yapabilirsiniz:</div>
+                    <div style="margin-bottom: 4px;"><strong>E-posta:</strong> <span style="font-family: monospace; color: var(--primary);">admin@doraelektronik.com</span></div>
+                    <div style="margin-bottom: 10px;"><strong>Şifre:</strong> <span style="font-family: monospace; color: var(--primary);">DoraElektronik@Admin2026!Secure</span></div>
+                    <button type="button" id="quick-admin-login-btn" class="btn btn-primary" style="width: 100%; padding: 8px; font-size: 0.8rem; background: var(--primary); color: #fff;">Tek Tıkla Giriş Yap</button>
+                </div>
+                <div id="login-error-msg" style="color: #ff4757; font-size: 0.85rem; margin-bottom: 15px; display: none;"></div>
+                <button type="submit" class="btn btn-primary w-100">Giriş Yap</button>
+                <p style="margin-top: 15px; text-align: center; font-size: 0.9rem; color: var(--gray);">Hesabınız yok mu? <a href="#" id="go-to-register" style="color: var(--primary); font-weight: 500;">Üye Olun</a></p>
+                <a href="#" id="toggle-admin-info" style="font-size: 0.8rem; color: var(--primary); display: block; margin-top: 12px; text-align: center; text-decoration: underline;">Yönetici Giriş Bilgileri</a>
+            </form>
+        </div>
+    </div>
+    <div id="login-overlay" class="overlay" style="z-index: 10002;"></div>
+
+    <!-- Register Modal -->
+    <div id="register-modal" class="modal" style="z-index: 10003;">
+        <div class="modal-content text-left" style="max-height: 90vh; overflow-y: auto;">
+            <button id="close-register" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+            <h2>Üye Ol</h2>
+            <p style="margin-bottom: 20px; color: var(--gray); font-size: 0.95rem;">Lütfen üyelik bilgilerinizi doldurunuz.</p>
+            <form id="register-form">
+                <div class="form-group">
+                    <label for="register-name">Ad Soyad</label>
+                    <input type="text" id="register-name" required placeholder="Örn. Selin Yılmaz">
+                </div>
+                <div class="form-group">
+                    <label for="register-email">E-posta Adresi</label>
+                    <input type="email" id="register-email" required placeholder="Örn. selin@example.com">
+                </div>
+                <div class="form-group">
+                    <label for="register-phone">Telefon Numarası</label>
+                    <input type="tel" id="register-phone" required placeholder="Örn. 0555 123 4567">
+                </div>
+                <div class="form-group">
+                    <label for="register-address">Teslimat Adresi</label>
+                    <textarea id="register-address" required placeholder="Mahalle, Sokak, Daire, İlçe/İl"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="register-password">Şifre</label>
+                    <input type="password" id="register-password" required placeholder="Şifreniz (En az 6 karakter)" minlength="6">
+                </div>
+                <div id="register-error-msg" style="color: #ff4757; font-size: 0.85rem; margin-bottom: 15px; display: none;"></div>
+                <button type="submit" class="btn btn-primary w-100">Üye Ol</button>
+                <p style="margin-top: 15px; text-align: center; font-size: 0.9rem; color: var(--gray);">Zaten üye misiniz? <a href="#" id="go-to-login" style="color: var(--primary); font-weight: 500;">Giriş Yapın</a></p>
+            </form>
+        </div>
+    </div>
+    <div id="register-overlay" class="overlay" style="z-index: 10002;"></div>
+
+    <!-- 3D Secure Verification Modal -->
+    <div id="three-d-secure-modal" class="modal" style="max-width: 400px; z-index: 10005;">
+        <div class="modal-content text-center">
+            <h3 style="margin-bottom: 10px;"><i class="fa-solid fa-shield-halved" style="color: var(--primary);"></i> 3D Secure Doğrulama</h3>
+            <p style="font-size: 0.9rem; color: var(--gray); margin-bottom: 15px;">Lütfen cep telefonunuza gönderilen doğrulama kodunu giriniz.</p>
+            <div style="display: none;">
+                SMS Şifreniz: <span id="three-d-code-display" style="color: var(--primary); font-size: 1.1rem; letter-spacing: 1px;">582194</span>
+            </div>
+            <form id="three-d-form">
+                <div class="form-group">
+                    <input type="text" id="three-d-code-input" required placeholder="6 Haneli Kodu Girin" maxlength="6" style="text-align: center; font-size: 1.2rem; letter-spacing: 4px; padding: 10px; background: #fff;">
+                </div>
+                <div id="three-d-error-msg" style="color: #ff4757; font-size: 0.85rem; margin-bottom: 10px; display: none;">Hatalı kod, lütfen tekrar deneyin.</div>
+                <button type="submit" class="btn btn-primary w-100">Doğrula ve Siparişi Tamamla</button>
+            </form>
+        </div>
+    </div>
+    <div id="three-d-overlay" class="overlay" style="z-index: 10004;"></div>
+
+    <!-- Script files -->
+    <script src="db.js?v=2"></script>
+    <script src="products.js"></script>
+    <script src="product.js?v=2"></script>
+    <script src="chat.js"></script>
+</body>
+</html>
