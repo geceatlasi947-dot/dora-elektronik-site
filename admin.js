@@ -82,6 +82,12 @@ const paymentLockIcon = document.getElementById('payment-lock-icon');
 
 let decryptedPayments = [];
 
+// Coupons Panel DOM Elements
+const toggleAddCouponBtn = document.getElementById('toggle-add-coupon-btn');
+const addCouponPanel = document.getElementById('add-coupon-panel');
+const addCouponForm = document.getElementById('add-coupon-form');
+const adminCouponsRows = document.getElementById('admin-coupons-rows');
+
 // Initialize Admin Dashboard
 function initAdmin() {
     currentUser = db.getCurrentUser();
@@ -95,9 +101,11 @@ function initAdmin() {
     renderOrdersTable();
     renderInventoryTable();
     renderReviewsTable();
+    renderCouponsTable();
     setupAdminListeners();
     setupCartListeners();
     setupPaymentListeners();
+    setupCouponListeners();
 }
 
 // Render Authentication Area in Navbar
@@ -943,6 +951,120 @@ window.addEventListener('storage', async (e) => {
         renderInventoryTable();
     }
 });
+// Render Coupons Table
+function renderCouponsTable() {
+    const coupons = db.cache.coupons || [];
+
+    adminCouponsRows.innerHTML = '';
+    if (coupons.length === 0) {
+        adminCouponsRows.innerHTML = `<tr><td colspan="4" style="text-align:center; padding: 20px; color: var(--gray);">Henüz kupon kodu bulunmuyor.</td></tr>`;
+        return;
+    }
+
+    coupons.forEach(coupon => {
+        const row = document.createElement('tr');
+        row.style.borderBottom = '1px solid var(--border)';
+        
+        row.innerHTML = `
+            <td style="padding: 12px; font-weight: 600; color: var(--primary);">${coupon.code}</td>
+            <td style="padding: 12px; text-align: right; font-weight: 600;">%${coupon.discountPercent}</td>
+            <td style="padding: 12px; text-align: center;">
+                <button class="btn toggle-coupon-btn" data-code="${coupon.code}" style="padding: 4px 8px; font-size: 0.75rem; border: none; border-radius: 4px; color: white; background: ${coupon.active ? '#2ed573' : '#a8a8a8'}; cursor: pointer; min-width: 80px;">
+                    ${coupon.active ? 'Aktif' : 'Pasif'}
+                </button>
+            </td>
+            <td style="padding: 12px; text-align: center;">
+                <button class="btn delete-coupon-btn" data-code="${coupon.code}" style="padding: 4px 8px; font-size: 0.75rem; border: none; border-radius: 4px; color: white; background: #ff4757; cursor: pointer;">
+                    Sil
+                </button>
+            </td>
+        `;
+        adminCouponsRows.appendChild(row);
+    });
+
+    // Toggle coupon status
+    document.querySelectorAll('#admin-coupons-rows .toggle-coupon-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const code = btn.getAttribute('data-code');
+            const couponsList = db.cache.coupons || [];
+            const coupon = couponsList.find(c => c.code === code);
+            if (coupon) {
+                coupon.active = !coupon.active;
+                db.saveCoupon(coupon);
+                showToast(`"${code}" kuponu ${coupon.active ? 'aktifleştirildi' : 'deaktive edildi'}.`);
+                renderCouponsTable();
+            }
+        });
+    });
+
+    // Delete coupon
+    document.querySelectorAll('#admin-coupons-rows .delete-coupon-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const code = btn.getAttribute('data-code');
+            if (confirm(`"${code}" kupon kodunu silmek istediğinizden emin misiniz?`)) {
+                db.deleteCoupon(code);
+                showToast('Kupon kodu silindi.');
+                renderCouponsTable();
+            }
+        });
+    });
+}
+
+// Setup Coupon Listeners
+function setupCouponListeners() {
+    // Add Coupon Form Toggle
+    toggleAddCouponBtn.addEventListener('click', () => {
+        addCouponPanel.classList.toggle('hidden');
+        if (addCouponPanel.classList.contains('hidden')) {
+            toggleAddCouponBtn.innerText = 'Yeni Kupon Ekle';
+        } else {
+            toggleAddCouponBtn.innerText = 'Kapat';
+        }
+    });
+
+    // Add Coupon Form Submit
+    addCouponForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+
+        const codeInput = document.getElementById('new-coupon-code');
+        const discountInput = document.getElementById('new-coupon-discount');
+        const activeInput = document.getElementById('new-coupon-active');
+
+        const codeVal = codeInput.value.trim().toUpperCase();
+        const discountVal = parseInt(discountInput.value, 10);
+        const activeVal = activeInput.checked;
+
+        if (!codeVal) {
+            alert('Lütfen kupon kodu giriniz.');
+            return;
+        }
+
+        if (isNaN(discountVal) || discountVal < 1 || discountVal > 100) {
+            alert('Lütfen %1 ile %100 arasında geçerli bir indirim oranı girin.');
+            return;
+        }
+
+        const couponsList = db.cache.coupons || [];
+        if (couponsList.some(c => c.code === codeVal)) {
+            alert('Bu kupon kodu zaten mevcut.');
+            return;
+        }
+
+        const newCoupon = {
+            code: codeVal,
+            discountPercent: discountVal,
+            active: activeVal
+        };
+
+        db.saveCoupon(newCoupon);
+        showToast('Kupon kodu başarıyla eklendi!');
+        addCouponForm.reset();
+        addCouponPanel.classList.add('hidden');
+        toggleAddCouponBtn.innerText = 'Yeni Kupon Ekle';
+
+        renderCouponsTable();
+    });
+}
 
 // Run on load
 if (db.initPromise) {

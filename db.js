@@ -2059,6 +2059,31 @@ class DatabaseEngine {
         }
     }
 
+    saveCoupon(coupon) {
+        const idx = this.cache.coupons.findIndex(c => c.code === coupon.code);
+        if (idx !== -1) {
+            this.cache.coupons[idx] = coupon;
+        } else {
+            this.cache.coupons.push(coupon);
+        }
+        this.saveLocalCollection('coupons');
+
+        if (this.isFirebaseReady) {
+            this.firestore.collection(this.collections.coupons).doc(coupon.code).set(coupon)
+                .catch(err => console.error("Firestore save coupon failed:", err));
+        }
+    }
+
+    deleteCoupon(code) {
+        this.cache.coupons = this.cache.coupons.filter(c => c.code !== code);
+        this.saveLocalCollection('coupons');
+
+        if (this.isFirebaseReady) {
+            this.firestore.collection(this.collections.coupons).doc(code).delete()
+                .catch(err => console.error("Firestore delete coupon failed:", err));
+        }
+    }
+
     getReviews(productId) {
         return this.cache.reviews[productId] || [];
     }
