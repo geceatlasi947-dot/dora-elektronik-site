@@ -418,7 +418,7 @@ a {
 }
 
 .category-card {
-    background: rgba(248, 246, 242, 0.45);
+    background: #ffffff;
     border: 1px solid var(--border);
     border-radius: 12px;
     overflow: hidden;
@@ -433,14 +433,14 @@ a {
 
 .category-card:hover {
     transform: translateY(-8px);
-    border-color: rgba(212, 176, 106, 0.4);
-    box-shadow: 0 15px 30px rgba(212, 176, 106, 0.08), 0 0 1px rgba(212, 176, 106, 0.25);
-    background: rgba(248, 246, 242, 0.75);
+    border-color: var(--primary);
+    box-shadow: 0 15px 30px rgba(212, 176, 106, 0.1), 0 0 1px rgba(212, 176, 106, 0.3);
+    background: #ffffff;
 }
 
 .category-img {
     height: 220px;
-    background: radial-gradient(circle at 50% 50%, #ffffff 0%, rgba(248, 246, 242, 0.3) 100%);
+    background: #f6f5f0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -547,20 +547,20 @@ a {
 .product-card {
     content-visibility: auto;
     contain-intrinsic-size: 400px;
-    background: transparent;
-    border-radius: 8px;
+    background: #ffffff;
+    border-radius: 12px;
     transform: translateZ(0);
     will-change: transform;
     overflow: hidden;
-    border: 1px solid rgba(212, 176, 106, 0.08);
+    border: 1px solid var(--border);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.01);
     transition: var(--transition);
 }
 
 .product-card:hover {
     transform: translateY(-8px);
-    box-shadow: 0 20px 40px rgba(212, 176, 106, 0.08), 0 0 1px rgba(212, 176, 106, 0.25);
-    border-color: rgba(212, 176, 106, 0.35);
+    box-shadow: 0 20px 40px rgba(212, 176, 106, 0.1), 0 0 1px rgba(212, 176, 106, 0.3);
+    border-color: var(--primary);
 }
 
 .product-img {
@@ -568,8 +568,8 @@ a {
     overflow: hidden;
     position: relative;
     cursor: pointer;
-    background: radial-gradient(circle at 50% 40%, #e8e2d4 0%, #d8cdb8 100%);
-    border-bottom: 1px solid rgba(212, 176, 106, 0.15);
+    background: #f6f5f0;
+    border-bottom: 1px solid var(--border);
 }
 
 .product-img img {
