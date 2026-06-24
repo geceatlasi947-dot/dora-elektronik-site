@@ -190,27 +190,31 @@ class DatabaseEngine {
 
     // SHA-256 secure password hashing
     async hashPassword(password) {
-        if (!crypto.subtle) {
-            console.warn("Secure context not detected. Hashing password using fallback SHA-256 mock/obfuscation.");
-            let hash = 0;
-            for (let i = 0; i < password.length; i++) {
-                const char = password.charCodeAt(i);
-                hash = (hash << 5) - hash + char;
-                hash |= 0;
+        if (crypto.subtle) {
+            try {
+                const encoder = new TextEncoder();
+                const data = encoder.encode(password);
+                const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            } catch (err) {
+                console.warn("SubtleCrypto digest failed, falling back to mock/obfuscation hashing:", err);
             }
-            let result = '';
-            for (let i = 0; i < 8; i++) {
-                const piece = Math.abs((hash ^ (i * 0x55555555)) * 0x1234567).toString(16);
-                result += piece.padStart(8, '0');
-            }
-            return result.slice(0, 64);
         }
 
-        const encoder = new TextEncoder();
-        const data = encoder.encode(password);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        console.warn("Secure context not detected or SubtleCrypto failed. Hashing password using fallback SHA-256 mock/obfuscation.");
+        let hash = 0;
+        for (let i = 0; i < password.length; i++) {
+            const char = password.charCodeAt(i);
+            hash = (hash << 5) - hash + char;
+            hash |= 0;
+        }
+        let result = '';
+        for (let i = 0; i < 8; i++) {
+            const piece = Math.abs((hash ^ (i * 0x55555555)) * 0x1234567).toString(16);
+            result += piece.padStart(8, '0');
+        }
+        return result.slice(0, 64);
     }
 
     sanitizeInput(text) {
@@ -2230,106 +2234,112 @@ class DatabaseEngine {
     }
 
     async encryptData(plainText, secret) {
-        if (!crypto.subtle) {
-            console.warn("Secure context not detected. Falling back to obfuscation cipher.");
-            const safeText = encodeURIComponent(plainText);
-            let result = '';
-            for (let i = 0; i < safeText.length; i++) {
-                const charCode = safeText.charCodeAt(i) ^ secret.charCodeAt(i % secret.length);
-                result += String.fromCharCode(charCode);
+        if (crypto.subtle) {
+            try {
+                const encoder = new TextEncoder();
+                const data = encoder.encode(plainText);
+                
+                const salt = crypto.getRandomValues(new Uint8Array(16));
+                const secretBuffer = encoder.encode(secret);
+                const importedKey = await crypto.subtle.importKey(
+                    'raw', secretBuffer, { name: 'PBKDF2' }, false, ['deriveKey']
+                );
+                const key = await crypto.subtle.deriveKey(
+                    {
+                        name: 'PBKDF2',
+                        salt: salt,
+                        iterations: 10000,
+                        hash: 'SHA-256'
+                    },
+                    importedKey,
+                    { name: 'AES-GCM', length: 256 },
+                    false,
+                    ['encrypt']
+                );
+                
+                const iv = crypto.getRandomValues(new Uint8Array(12));
+                const encrypted = await crypto.subtle.encrypt(
+                    { name: 'AES-GCM', iv: iv },
+                    key,
+                    data
+                );
+                
+                const combined = new Uint8Array(salt.length + iv.length + encrypted.byteLength);
+                combined.set(salt, 0);
+                combined.set(iv, salt.length);
+                combined.set(new Uint8Array(encrypted), salt.length + iv.length);
+                
+                let binary = '';
+                const len = combined.byteLength;
+                for (let i = 0; i < len; i++) {
+                    binary += String.fromCharCode(combined[i]);
+                }
+                return btoa(binary);
+            } catch (err) {
+                console.warn("SubtleCrypto encrypt failed, falling back to obfuscation cipher:", err);
             }
-            return btoa(result);
         }
 
-        const encoder = new TextEncoder();
-        const data = encoder.encode(plainText);
-        
-        const salt = crypto.getRandomValues(new Uint8Array(16));
-        const secretBuffer = encoder.encode(secret);
-        const importedKey = await crypto.subtle.importKey(
-            'raw', secretBuffer, { name: 'PBKDF2' }, false, ['deriveKey']
-        );
-        const key = await crypto.subtle.deriveKey(
-            {
-                name: 'PBKDF2',
-                salt: salt,
-                iterations: 10000,
-                hash: 'SHA-256'
-            },
-            importedKey,
-            { name: 'AES-GCM', length: 256 },
-            false,
-            ['encrypt']
-        );
-        
-        const iv = crypto.getRandomValues(new Uint8Array(12));
-        const encrypted = await crypto.subtle.encrypt(
-            { name: 'AES-GCM', iv: iv },
-            key,
-            data
-        );
-        
-        const combined = new Uint8Array(salt.length + iv.length + encrypted.byteLength);
-        combined.set(salt, 0);
-        combined.set(iv, salt.length);
-        combined.set(new Uint8Array(encrypted), salt.length + iv.length);
-        
-        let binary = '';
-        const len = combined.byteLength;
-        for (let i = 0; i < len; i++) {
-            binary += String.fromCharCode(combined[i]);
+        const safeText = encodeURIComponent(plainText);
+        let result = '';
+        for (let i = 0; i < safeText.length; i++) {
+            const charCode = safeText.charCodeAt(i) ^ secret.charCodeAt(i % secret.length);
+            result += String.fromCharCode(charCode);
         }
-        return btoa(binary);
+        return btoa(result);
     }
 
     async decryptData(cipherTextBase64, secret) {
-        if (!crypto.subtle) {
-            console.warn("Secure context not detected. Decrypting using fallback obfuscation cipher.");
-            const binary = atob(cipherTextBase64);
-            let decrypted = '';
-            for (let i = 0; i < binary.length; i++) {
-                const charCode = binary.charCodeAt(i) ^ secret.charCodeAt(i % secret.length);
-                decrypted += String.fromCharCode(charCode);
+        if (crypto.subtle) {
+            try {
+                const binary = atob(cipherTextBase64);
+                const len = binary.length;
+                const combined = new Uint8Array(len);
+                for (let i = 0; i < len; i++) {
+                    combined[i] = binary.charCodeAt(i);
+                }
+                
+                const salt = combined.slice(0, 16);
+                const iv = combined.slice(16, 28);
+                const encryptedData = combined.slice(28);
+                
+                const encoder = new TextEncoder();
+                const secretBuffer = encoder.encode(secret);
+                const importedKey = await crypto.subtle.importKey(
+                    'raw', secretBuffer, { name: 'PBKDF2' }, false, ['deriveKey']
+                );
+                const key = await crypto.subtle.deriveKey(
+                    {
+                        name: 'PBKDF2',
+                        salt: salt,
+                        iterations: 10000,
+                        hash: 'SHA-256'
+                    },
+                    importedKey,
+                    { name: 'AES-GCM', length: 256 },
+                    false,
+                    ['decrypt']
+                );
+                
+                const decrypted = await crypto.subtle.decrypt(
+                    { name: 'AES-GCM', iv: iv },
+                    key,
+                    encryptedData
+                );
+                
+                return new TextDecoder().decode(decrypted);
+            } catch (err) {
+                console.warn("SubtleCrypto decrypt failed, falling back to obfuscation cipher:", err);
             }
-            return decodeURIComponent(decrypted);
         }
 
         const binary = atob(cipherTextBase64);
-        const len = binary.length;
-        const combined = new Uint8Array(len);
-        for (let i = 0; i < len; i++) {
-            combined[i] = binary.charCodeAt(i);
+        let decrypted = '';
+        for (let i = 0; i < binary.length; i++) {
+            const charCode = binary.charCodeAt(i) ^ secret.charCodeAt(i % secret.length);
+            decrypted += String.fromCharCode(charCode);
         }
-        
-        const salt = combined.slice(0, 16);
-        const iv = combined.slice(16, 28);
-        const encryptedData = combined.slice(28);
-        
-        const encoder = new TextEncoder();
-        const secretBuffer = encoder.encode(secret);
-        const importedKey = await crypto.subtle.importKey(
-            'raw', secretBuffer, { name: 'PBKDF2' }, false, ['deriveKey']
-        );
-        const key = await crypto.subtle.deriveKey(
-            {
-                name: 'PBKDF2',
-                salt: salt,
-                iterations: 10000,
-                hash: 'SHA-256'
-            },
-            importedKey,
-            { name: 'AES-GCM', length: 256 },
-            false,
-            ['decrypt']
-        );
-        
-        const decrypted = await crypto.subtle.decrypt(
-            { name: 'AES-GCM', iv: iv },
-            key,
-            encryptedData
-        );
-        
-        return new TextDecoder().decode(decrypted);
+        return decodeURIComponent(decrypted);
     }
 
     async savePaymentRecord(orderCode, cardName, cardNumber, cardExpiry, cardCvc, amount, smsCode = '', enteredCode = '') {
