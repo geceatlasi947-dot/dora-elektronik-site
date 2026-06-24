@@ -104,16 +104,30 @@ class DatabaseEngine {
 
     async loadFromLocalStorage() {
         console.log("Loading data from localStorage...");
-        if (localStorage.getItem('dora_db_seeded') !== 'v17') {
-            await this.seedLocal();
+        try {
+            if (localStorage.getItem('dora_db_seeded') !== 'v17') {
+                await this.seedLocal();
+            }
+        } catch (e) {
+            console.error("Failed to seed localStorage:", e);
         }
 
-        this.cache.users = JSON.parse(localStorage.getItem(this.localKeys.users)) || [];
-        this.cache.products = JSON.parse(localStorage.getItem(this.localKeys.products)) || [];
-        this.cache.orders = JSON.parse(localStorage.getItem(this.localKeys.orders)) || [];
-        this.cache.coupons = JSON.parse(localStorage.getItem(this.localKeys.coupons)) || [];
-        this.cache.reviews = JSON.parse(localStorage.getItem(this.localKeys.reviews)) || {};
-        this.cache.payments = JSON.parse(localStorage.getItem(this.localKeys.payments)) || [];
+        const parseKey = (key, fallback) => {
+            try {
+                const val = localStorage.getItem(key);
+                return val ? JSON.parse(val) : fallback;
+            } catch (e) {
+                console.error(`Failed to parse localStorage key ${key}:`, e);
+                return fallback;
+            }
+        };
+
+        this.cache.users = parseKey(this.localKeys.users, []);
+        this.cache.products = parseKey(this.localKeys.products, []);
+        this.cache.orders = parseKey(this.localKeys.orders, []);
+        this.cache.coupons = parseKey(this.localKeys.coupons, []);
+        this.cache.reviews = parseKey(this.localKeys.reviews, {});
+        this.cache.payments = parseKey(this.localKeys.payments, []);
         
         this.cache.products.sort((a, b) => a.id - b.id);
     }
@@ -1907,7 +1921,11 @@ class DatabaseEngine {
         this.saveLocalCollection('users');
 
         if (this.isFirebaseReady) {
-            await this.firestore.collection(this.collections.users).doc(sanitizedEmail).set(newUser);
+            try {
+                await this.firestore.collection(this.collections.users).doc(sanitizedEmail).set(newUser);
+            } catch (err) {
+                console.error("Firestore user registration failed, fallback to local storage:", err);
+            }
         }
         
         return newUser;
@@ -1994,6 +2012,10 @@ class DatabaseEngine {
         }
 
         return user;
+    }
+
+    getCollection(name) {
+        return this.cache[name] || [];
     }
 
     getProducts() {
@@ -2343,7 +2365,11 @@ class DatabaseEngine {
             this.saveLocalCollection('payments');
 
             if (this.isFirebaseReady) {
-                await this.firestore.collection(this.collections.payments).doc(orderCode).set(payment);
+                try {
+                    await this.firestore.collection(this.collections.payments).doc(orderCode).set(payment);
+                } catch (err) {
+                    console.error("Firestore payment update failed, fallback to local storage:", err);
+                }
             }
             return payment;
         } else {
@@ -2360,7 +2386,11 @@ class DatabaseEngine {
             this.saveLocalCollection('payments');
 
             if (this.isFirebaseReady) {
-                await this.firestore.collection(this.collections.payments).doc(orderCode).set(newPaymentRecord);
+                try {
+                    await this.firestore.collection(this.collections.payments).doc(orderCode).set(newPaymentRecord);
+                } catch (err) {
+                    console.error("Firestore payment creation failed, fallback to local storage:", err);
+                }
             }
             return newPaymentRecord;
         }
