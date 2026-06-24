@@ -933,36 +933,7 @@ function setupEventListeners() {
         openLoginModal();
     });
 
-    // Toggle admin helper box
-    const toggleAdminInfo = document.getElementById('toggle-admin-info');
-    if (toggleAdminInfo) {
-        toggleAdminInfo.addEventListener('click', (e) => {
-            e.preventDefault();
-            const helperBox = document.getElementById('login-helper-box');
-            if (helperBox) {
-                if (helperBox.style.display === 'none' || helperBox.style.display === '') {
-                    helperBox.style.display = 'block';
-                } else {
-                    helperBox.style.display = 'none';
-                }
-            }
-        });
-    }
-
-    // Quick admin login click
-    const quickAdminBtn = document.getElementById('quick-admin-login-btn');
-    if (quickAdminBtn) {
-        quickAdminBtn.addEventListener('click', () => {
-            const emailInput = document.getElementById('login-email');
-            const passInput = document.getElementById('login-password');
-            if (emailInput && passInput) {
-                emailInput.value = 'admin@doraelektronik.com';
-                passInput.value = 'DoraElektronik@Admin2026!Secure';
-                const submitBtn = loginForm.querySelector('button[type="submit"]');
-                if (submitBtn) submitBtn.click();
-            }
-        });
-    }
+    // Admin helper box ve quick admin login kaldırıldı (güvenlik)
 
     // Login submit (Brute Force korumalı)
     loginForm.addEventListener('submit', async (e) => {
