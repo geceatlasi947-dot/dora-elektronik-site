@@ -59,42 +59,53 @@
 
     <!-- Product Grid -->
     <main id="products" class="container product-section">
-        <div class="section-header">
-            <h3>En Özel <em>Koleksiyonlar</em></h3>
-            <p>Sizin için özenle seçilmiş premium ev teknolojileri</p>
+        <div class="section-header products-section-header">
+            <div class="header-titles">
+                <h3>En Özel <em>Koleksiyonlar</em></h3>
+                <p>Sizin için özenle seçilmiş premium ev teknolojileri</p>
+            </div>
+            <button id="filter-toggle-btn" class="btn btn-secondary filter-toggle-btn" type="button">
+                <i class="fa-solid fa-sliders"></i> Filtrele
+            </button>
         </div>
         
         <div class="products-layout">
-            <!-- Filters Sidebar -->
+            <!-- Filters Sidebar Drawer -->
             <aside class="filters-sidebar">
-                <div class="filter-group">
-                    <h4>Maksimum Fiyat</h4>
-                    <div class="range-slider-container">
-                        <input type="range" id="filter-price" min="0" max="120000" step="1000" value="120000">
-                        <div class="range-values">
-                            <span>0 TL</span>
-                            <span id="filter-price-display" style="color: var(--primary); font-weight: 700;">120000 TL</span>
+                <div class="drawer-header">
+                    <h3>Filtrele</h3>
+                    <button id="close-filters" class="icon-btn" type="button"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="drawer-scroll-body">
+                    <div class="filter-group">
+                        <h4>Maksimum Fiyat</h4>
+                        <div class="range-slider-container">
+                            <input type="range" id="filter-price" min="0" max="120000" step="1000" value="120000">
+                            <div class="range-values">
+                                <span>0 TL</span>
+                                <span id="filter-price-display" style="color: var(--primary); font-weight: 700;">120000 TL</span>
+                            </div>
                         </div>
                     </div>
-                </div>
-                
-                <div class="filter-group">
-                    <h4>Markalar</h4>
-                    <div id="filter-brands-list">
-                        <!-- Dynamically populated -->
+                    
+                    <div class="filter-group">
+                        <h4>Markalar</h4>
+                        <div id="filter-brands-list">
+                            <!-- Dynamically populated -->
+                        </div>
                     </div>
-                </div>
-                
-                <div class="filter-group">
-                    <h4>Renk & Model Seçenekleri</h4>
-                    <div id="filter-sizes-list">
-                        <!-- Dynamically populated -->
+                    
+                    <div class="filter-group">
+                        <h4>Renk & Model Seçenekleri</h4>
+                        <div id="filter-sizes-list">
+                            <!-- Dynamically populated -->
+                        </div>
                     </div>
+                    
+                    <button id="reset-filters-btn" class="btn-reset-filters" type="button">
+                        <i class="fa-solid fa-rotate-left"></i> Filtreleri Temizle
+                    </button>
                 </div>
-                
-                <button id="reset-filters-btn" class="btn-reset-filters" type="button">
-                    <i class="fa-solid fa-rotate-left"></i> Filtreleri Temizle
-                </button>
             </aside>
             
             <div id="product-grid" class="grid">
@@ -161,6 +172,7 @@
         </div>
     </div>
     <div id="cart-overlay" class="overlay"></div>
+    <div id="filters-overlay" class="overlay" style="z-index: 998;"></div>
 
     <!-- Checkout Modal -->
     <div id="checkout-modal" class="modal">

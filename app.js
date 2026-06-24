@@ -74,6 +74,12 @@ const cartDiscountPrice = document.getElementById('cart-discount-price');
 const cartTotalPrice = document.getElementById('cart-total-price');
 const checkoutBtn = document.getElementById('checkout-btn');
 
+// Filters Drawer Elements
+const filterToggleBtn = document.getElementById('filter-toggle-btn');
+const closeFiltersBtn = document.getElementById('close-filters');
+const filtersSidebar = document.querySelector('.filters-sidebar');
+const filtersOverlay = document.getElementById('filters-overlay');
+
 // Modals
 const successModal = document.getElementById('success-modal');
 const successOverlay = document.getElementById('success-overlay');
@@ -713,6 +719,23 @@ function closeCart() {
 window.openCart = openCart;
 window.closeCart = closeCart;
 
+function openFilters() {
+    if (filtersSidebar && filtersOverlay) {
+        filtersSidebar.classList.add('open');
+        filtersOverlay.classList.add('active');
+    }
+}
+
+function closeFilters() {
+    if (filtersSidebar && filtersOverlay) {
+        filtersSidebar.classList.remove('open');
+        filtersOverlay.classList.remove('active');
+    }
+}
+
+window.openFilters = openFilters;
+window.closeFilters = closeFilters;
+
 function openCheckoutModal() {
     closeCart();
     
@@ -831,6 +854,11 @@ function setupEventListeners() {
     cartBtn.addEventListener('click', openCart);
     closeCartBtn.addEventListener('click', closeCart);
     cartOverlay.addEventListener('click', closeCart);
+    
+    // Filters Drawer Event Listeners
+    if (filterToggleBtn) filterToggleBtn.addEventListener('click', openFilters);
+    if (closeFiltersBtn) closeFiltersBtn.addEventListener('click', closeFilters);
+    if (filtersOverlay) filtersOverlay.addEventListener('click', closeFilters);
     
     checkoutBtn.addEventListener('click', () => {
         if (cart.length > 0) {
