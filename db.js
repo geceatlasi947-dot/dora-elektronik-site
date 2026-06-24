@@ -1,28 +1,180 @@
-// Local Database Engine - Dora Elektronik
+// Local Database Engine - Dora Elektronik (Firebase Entegrasyonu + localStorage Fallback)
 
 class DatabaseEngine {
     constructor() {
-        // Core tables
+        this.firebaseConfig = {
+          apiKey: "AIzaSyCtnJRwx1sf9lwr-vLUihW2S24A5UFdFok",
+          authDomain: "dora-elektronik.firebaseapp.com",
+          projectId: "dora-elektronik",
+          storageBucket: "dora-elektronik.firebasestorage.app",
+          messagingSenderId: "406406367342",
+          appId: "1:406406367342:web:63a9c8e60f85a79c42fe7f",
+          measurementId: "G-HN3P1C7WKJ"
+        };
+        
+        this.cache = {
+            users: [],
+            products: [],
+            orders: [],
+            coupons: [],
+            reviews: {},
+            payments: []
+        };
+        
         this.collections = {
+            users: 'users',
+            products: 'products',
+            orders: 'orders',
+            reviews: 'reviews',
+            coupons: 'coupons',
+            payments: 'payments'
+        };
+
+        this.localKeys = {
             users: 'dora_db_users',
             products: 'dora_db_products',
             orders: 'dora_db_orders',
             reviews: 'dora_db_reviews',
             coupons: 'dora_db_coupons',
-            session: 'dora_db_session',
             payments: 'dora_db_payments'
         };
+
+        this.isFirebaseReady = false;
         this.initPromise = this.init();
     }
 
     async init() {
-        // Seed if first time or version mismatch
+        try {
+            if (typeof firebase === 'undefined') {
+                throw new Error("Firebase SDK is not loaded. Ensure you are connected to the internet.");
+            }
+            if (!firebase.apps.length) {
+                firebase.initializeApp(this.firebaseConfig);
+            }
+            this.firestore = firebase.firestore();
+            this.auth = firebase.auth();
+
+            try {
+                await this.firestore.enablePersistence({ synchronizeTabs: true });
+            } catch (err) {
+                console.warn("Firestore persistence could not be enabled:", err.code);
+            }
+
+            await this.syncFromFirestore();
+            this.setupRealTimeSync();
+        } catch (err) {
+            console.error("Firebase initialization failed, falling back to localStorage:", err);
+            this.isFirebaseReady = false;
+            await this.loadFromLocalStorage();
+        }
+    }
+    
+    async syncFromFirestore() {
+        const [usersSnap, productsSnap, couponsSnap, reviewsSnap, ordersSnap, paymentsSnap] = await Promise.all([
+            this.firestore.collection(this.collections.users).get(),
+            this.firestore.collection(this.collections.products).get(),
+            this.firestore.collection(this.collections.coupons).get(),
+            this.firestore.collection(this.collections.reviews).get(),
+            this.firestore.collection(this.collections.orders).get(),
+            this.firestore.collection(this.collections.payments).get()
+        ]);
+
+        if (productsSnap.empty) {
+            await this.seedFirestore();
+            return this.syncFromFirestore();
+        }
+
+        this.cache.users = usersSnap.docs.map(doc => doc.data());
+        this.cache.products = productsSnap.docs.map(doc => doc.data());
+        this.cache.coupons = couponsSnap.docs.map(doc => doc.data());
+        this.cache.orders = ordersSnap.docs.map(doc => doc.data());
+        this.cache.payments = paymentsSnap.docs.map(doc => doc.data());
+
+        this.cache.reviews = {};
+        reviewsSnap.docs.forEach(doc => {
+            const data = doc.data();
+            const productId = parseInt(doc.id);
+            this.cache.reviews[productId] = data.list || [];
+        });
+        
+        this.cache.products.sort((a, b) => a.id - b.id);
+        this.isFirebaseReady = true;
+        console.log("Firestore synced successfully!");
+    }
+
+    async loadFromLocalStorage() {
+        console.log("Loading data from localStorage...");
         if (localStorage.getItem('dora_db_seeded') !== 'v17') {
-            await this.seed();
+            await this.seedLocal();
+        }
+
+        this.cache.users = JSON.parse(localStorage.getItem(this.localKeys.users)) || [];
+        this.cache.products = JSON.parse(localStorage.getItem(this.localKeys.products)) || [];
+        this.cache.orders = JSON.parse(localStorage.getItem(this.localKeys.orders)) || [];
+        this.cache.coupons = JSON.parse(localStorage.getItem(this.localKeys.coupons)) || [];
+        this.cache.reviews = JSON.parse(localStorage.getItem(this.localKeys.reviews)) || {};
+        this.cache.payments = JSON.parse(localStorage.getItem(this.localKeys.payments)) || [];
+        
+        this.cache.products.sort((a, b) => a.id - b.id);
+    }
+
+    saveLocalCollection(name) {
+        const key = this.localKeys[name];
+        if (key) {
+            localStorage.setItem(key, JSON.stringify(this.cache[name]));
         }
     }
 
-    // SHA-256 secure password hashing using browser native Web Crypto API (with fallback for file:///)
+    setupRealTimeSync() {
+        let isInitialOrders = true;
+        let isInitialPayments = true;
+
+        this.firestore.collection(this.collections.orders).onSnapshot(snapshot => {
+            if (snapshot.empty) return;
+            this.cache.orders = snapshot.docs.map(doc => doc.data());
+            this.saveLocalCollection('orders');
+            if (!isInitialOrders) {
+                const event = new Event('storage');
+                event.key = 'dora_db_orders';
+                window.dispatchEvent(event);
+            }
+            isInitialOrders = false;
+        });
+
+        this.firestore.collection(this.collections.payments).onSnapshot(snapshot => {
+            if (snapshot.empty) return;
+            this.cache.payments = snapshot.docs.map(doc => doc.data());
+            this.saveLocalCollection('payments');
+            if (!isInitialPayments) {
+                const event = new Event('storage');
+                event.key = 'dora_db_payments';
+                window.dispatchEvent(event);
+            }
+            isInitialPayments = false;
+        });
+        
+        this.firestore.collection(this.collections.reviews).onSnapshot(snapshot => {
+            snapshot.docs.forEach(doc => {
+                const productId = parseInt(doc.id);
+                this.cache.reviews[productId] = doc.data().list || [];
+            });
+            this.saveLocalCollection('reviews');
+            const event = new Event('storage');
+            event.key = 'dora_db_reviews';
+            window.dispatchEvent(event);
+        });
+
+        this.firestore.collection(this.collections.products).onSnapshot(snapshot => {
+            this.cache.products = snapshot.docs.map(doc => doc.data());
+            this.cache.products.sort((a, b) => a.id - b.id);
+            this.saveLocalCollection('products');
+            const event = new Event('storage');
+            event.key = 'dora_db_products';
+            window.dispatchEvent(event);
+        });
+    }
+
+    // SHA-256 secure password hashing
     async hashPassword(password) {
         if (!crypto.subtle) {
             console.warn("Secure context not detected. Hashing password using fallback SHA-256 mock/obfuscation.");
@@ -47,7 +199,6 @@ class DatabaseEngine {
         return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     }
 
-    // Input sanitization to prevent XSS (Cross-Site Scripting)
     sanitizeInput(text) {
         if (typeof text !== 'string') return text;
         const map = {
@@ -62,22 +213,75 @@ class DatabaseEngine {
         return text.replace(reg, (match) => map[match]);
     }
 
-    // Fetch whole collection
-    getCollection(name) {
-        const key = this.collections[name];
-        const data = localStorage.getItem(key);
-        return data ? JSON.parse(data) : [];
+    generateInitialReviews(productsList) {
+        const authors = [
+            "Zeynep Y.", "Merve K.", "Ece A.", "Ayşe T.", "Deniz B.", 
+            "Selin G.", "Aslıhan E.", "Ebru U.", "Ceren T.", "Buse A.", 
+            "Yasemin S.", "Derya K.", "Melis B.", "Selin K.", "Gözde Y.", 
+            "Bahar K.", "Ebru N.", "Didem A.", "Sinem T.", "Gizem B.",
+            "Eylül Y.", "Merve D.", "Sezin Ö.", "Ayla T.", "Nilüfer S.", 
+            "Ceren G.", "Hale A.", "Elif B.", "Tuğba K.", "Demet T.", 
+            "Burcu V.", "Aslı G.", "Pınar E.", "Büşra N.", "Gözde M.", 
+            "Melda K.", "Zeynep U.", "Füsun Y.", "Dilan Ç.", "Selin Y."
+        ];
+        
+        const reviewTexts = {
+            guzellik: [
+                "Ürünü bir süredir kullanıyorum, çok memnun kaldım. Kesinlikle tavsiye ederim.",
+                "Tasarımı çok şık ve kullanımı son derece pratik. Saçlarımı hiç yıpratmıyor.",
+                "Beklentilerimin çok üzerinde bir performans sundu. Paketleme de harikaydı.",
+                "Fiyatını sonuna kadar hak eden premium bir cihaz. Saçlarım kuaförden çıkmış gibi pürüzsüz.",
+                "Çok hızlı elime ulaştı. Kalitesini ilk dokunuşta hissediyorsunuz."
+            ],
+            temizlik: [
+                "Evdeki en büyük yardımcım oldu. Emiş gücü harika, temizlik süresi yarıya indi.",
+                "Kendini temizleme ve kurutma özellikleri mükemmel çalışıyor. Çok pratik.",
+                "Malzeme kalitesi üst düzey. Köşeleri ve kenarları çok iyi temizliyor.",
+                "Çok sessiz çalışıyor ve performansı muazzam. Her kuruşuna değer.",
+                "Tasarımı çok şık, temizliği tamamen zahmetsiz hale getiriyor."
+            ],
+            mutfak: [
+                "Mutfakta yemek yapmayı keyifli hale getiren harika bir yardımcı.",
+                "Retro tarzı tasarımı tezgahıma çok yakıştı. Kalitesi mükemmel.",
+                "Çok güçlü ve sessiz bir motoru var. Malzemeleri pürüzsüz karıştırıyor.",
+                "Kullanımı ve temizliği çok kolay. Kesinlikle mutfağın yıldızı.",
+                "Çok sağlam ve dayanıklı bir yapısı var. Herkese tavsiye ederim."
+            ],
+            kahve: [
+                "Her sabah barista kalitesinde kahve içmek muazzam bir lüks. Çok başarılı.",
+                "Kahve köpüğü ve kreması harika. Kullanımı son derece kolay ve pratik.",
+                "Tasarımı mutfağıma çok şık bir hava kattı. Çekirdekleri çok iyi öğütüyor.",
+                "Tek tuşla mükemmel latte ve espresso hazırlıyor. Temizliği de çok basit.",
+                "Kahve severlerin kesinlikle edinmesi gereken harika bir makine."
+            ]
+        };
+
+        const productReviews = {};
+        productsList.forEach(product => {
+            const cat = product.category;
+            const texts = reviewTexts[cat] || reviewTexts['guzellik'];
+            const list = [];
+            for (let i = 0; i < 5; i++) {
+                const author = authors[(product.id * 5 + i) % authors.length];
+                const rating = (i === 2 || i === 4) ? 4 : 5;
+                const dateOffset = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+                const dateStr = String(dateOffset.getDate()).padStart(2, '0') + '.' + String(dateOffset.getMonth() + 1).padStart(2, '0') + '.' + dateOffset.getFullYear();
+                list.push({
+                    id: Date.now() + i,
+                    author: author,
+                    rating: rating,
+                    date: dateStr,
+                    text: texts[i],
+                    adminReply: "Değerli değerlendirmeniz için Dora Elektronik olarak teşekkür ederiz."
+                });
+            }
+            productReviews[product.id] = list;
+        });
+        return productReviews;
     }
 
-    // Save whole collection
-    saveCollection(name, data) {
-        const key = this.collections[name];
-        localStorage.setItem(key, JSON.stringify(data));
-    }
-
-    // Database Seeding
-    async seed() {
-        // 1. Seed Products (based on original products.js)
+    async seedFirestore() {
+        console.log("Seeding Firestore...");
         const initialProducts = [
     {
         "id": 1,
@@ -825,9 +1029,6 @@ class DatabaseEngine {
     }
 ];
 
-        this.saveCollection('products', initialProducts);
-
-        // 2. Seed Users (Admin with strong unbreakable password)
         const adminPasswordHash = await this.hashPassword('DoraElektronik@Admin2026!Secure');
         const customerPasswordHash = await this.hashPassword('customer1234');
         const initialUsers = [
@@ -852,100 +1053,838 @@ class DatabaseEngine {
                 created_at: new Date().toISOString()
             }
         ];
-        this.saveCollection('users', initialUsers);
 
-        // 3. Seed Coupons
         const initialCoupons = [
             { code: 'DORADANSIZE', discountPercent: 30, active: true },
             { code: 'DORA20', discountPercent: 20, active: true },
             { code: 'DORA10', discountPercent: 10, active: true }
         ];
-        this.saveCollection('coupons', initialCoupons);
 
-        // 4. Seed Reviews (matching mock data)
-        const authors = [
-            "Zeynep Y.", "Merve K.", "Ece A.", "Ayşe T.", "Deniz B.", 
-            "Selin G.", "Aslıhan E.", "Ebru U.", "Ceren T.", "Buse A.", 
-            "Yasemin S.", "Derya K.", "Melis B.", "Selin K.", "Gözde Y.", 
-            "Bahar K.", "Ebru N.", "Didem A.", "Sinem T.", "Gizem B.",
-            "Eylül Y.", "Merve D.", "Sezin Ö.", "Ayla T.", "Nilüfer S.", 
-            "Ceren G.", "Hale A.", "Elif B.", "Tuğba K.", "Demet T.", 
-            "Burcu V.", "Aslı G.", "Pınar E.", "Büşra N.", "Gözde M.", 
-            "Melda K.", "Zeynep U.", "Füsun Y.", "Dilan Ç.", "Selin Y."
-        ];
-        
-        const reviewTexts = {
-            guzellik: [
-                "Ürünü bir süredir kullanıyorum, çok memnun kaldım. Kesinlikle tavsiye ederim.",
-                "Tasarımı çok şık ve kullanımı son derece pratik. Saçlarımı hiç yıpratmıyor.",
-                "Beklentilerimin çok üzerinde bir performans sundu. Paketleme de harikaydı.",
-                "Fiyatını sonuna kadar hak eden premium bir cihaz. Saçlarım kuaförden çıkmış gibi pürüzsüz.",
-                "Çok hızlı elime ulaştı. Kalitesini ilk dokunuşta hissediyorsunuz."
-            ],
-            temizlik: [
-                "Evdeki en büyük yardımcım oldu. Emiş gücü harika, temizlik süresi yarıya indi.",
-                "Kendini temizleme ve kurutma özellikleri mükemmel çalışıyor. Çok pratik.",
-                "Malzeme kalitesi üst düzey. Köşeleri ve kenarları çok iyi temizliyor.",
-                "Çok sessiz çalışıyor ve performansı muazzam. Her kuruşuna değer.",
-                "Tasarımı çok şık, temizliği tamamen zahmetsiz hale getiriyor."
-            ],
-            mutfak: [
-                "Mutfakta yemek yapmayı keyifli hale getiren harika bir yardımcı.",
-                "Retro tarzı tasarımı tezgahıma çok yakıştı. Kalitesi mükemmel.",
-                "Çok güçlü ve sessiz bir motoru var. Malzemeleri pürüzsüz karıştırıyor.",
-                "Kullanımı ve temizliği çok kolay. Kesinlikle mutfağın yıldızı.",
-                "Çok sağlam ve dayanıklı bir yapısı var. Herkese tavsiye ederim."
-            ],
-            kahve: [
-                "Her sabah barista kalitesinde kahve içmek muazzam bir lüks. Çok başarılı.",
-                "Kahve köpüğü ve kreması harika. Kullanımı son derece kolay ve pratik.",
-                "Tasarımı mutfağıma çok şık bir hava kattı. Çekirdekleri çok iyi öğütüyor.",
-                "Tek tuşla mükemmel latte ve espresso hazırlıyor. Temizliği de çok basit.",
-                "Kahve severlerin kesinlikle edinmesi gereken harika bir makine."
-            ]
-        };
+        const batch = this.firestore.batch();
 
-        const initialReviews = {};
-        initialProducts.forEach(product => {
-            const cat = product.category;
-            const texts = reviewTexts[cat] || reviewTexts['guzellik'];
-            initialReviews[product.id] = [];
-            
-            // Generate 5 reviews per product
-            for (let i = 0; i < 5; i++) {
-                const author = authors[(product.id * 5 + i) % authors.length];
-                const rating = (i === 2 || i === 4) ? 4 : 5; // 3 reviews are 5-star, 2 reviews are 4-star -> average 4.6
-                // Subtract 1 day for each review to look realistic
-                const dateOffset = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
-                const dateStr = `${String(dateOffset.getDate()).padStart(2, '0')}.${String(dateOffset.getMonth() + 1).padStart(2, '0')}.${dateOffset.getFullYear()}`;
-                
-                initialReviews[product.id].push({
-                    author: author,
-                    rating: rating,
-                    date: dateStr,
-                    text: texts[i]
-                });
-            }
+        initialProducts.forEach(p => {
+            const ref = this.firestore.collection(this.collections.products).doc(String(p.id));
+            batch.set(ref, p);
         });
-        this.saveCollection('reviews', initialReviews);
 
-        // 5. Seed Orders (Empty initially)
-        this.saveCollection('orders', []);
+        initialUsers.forEach(u => {
+            const ref = this.firestore.collection(this.collections.users).doc(u.email);
+            batch.set(ref, u);
+        });
 
-        // Mark as seeded with version 9
+        initialCoupons.forEach(c => {
+            const ref = this.firestore.collection(this.collections.coupons).doc(c.code);
+            batch.set(ref, c);
+        });
+
+        const productReviews = this.generateInitialReviews(initialProducts);
+        for (const [prodId, list] of Object.entries(productReviews)) {
+            const ref = this.firestore.collection(this.collections.reviews).doc(String(prodId));
+            batch.set(ref, { list });
+        }
+
+        await batch.commit();
+        console.log("Firestore successfully seeded!");
+    }
+
+    async seedLocal() {
+        console.log("Seeding LocalStorage...");
+        const initialProducts = [
+    {
+        "id": 1,
+        "brand": "Dyson",
+        "title": "Airwrap™ i.d. Çok Amaçlı Saç Şekillendirme Cihazı",
+        "category": "guzellik",
+        "oldPrice": 34000,
+        "newPrice": 29999,
+        "image": "images/dyson_airwrap_complete_1782046094385.png",
+        "sizes": [
+            "Ceramic Pink",
+            "Ceramic Apricot",
+            "Prussian Blue"
+        ],
+        "stock": 5,
+        "colors": [
+            {
+                "name": "Ceramic Pink",
+                "hex": "#f8c2c6",
+                "image": "images/dyson_airwrap_complete_1782046094385.png",
+                "filterClass": "filter-none"
+            },
+            {
+                "name": "Ceramic Apricot",
+                "hex": "#f4a261",
+                "image": null,
+                "filterClass": "filter-none"
+            },
+            {
+                "name": "Prussian Blue",
+                "hex": "#1d3557",
+                "image": null,
+                "filterClass": "filter-none"
+            }
+        ],
+        "description": "Dyson'un en yeni saç şekillendiricisi Airwrap™ i.d. akıllı telefon entegrasyonu ve Bluetooth bağlantısı ile kişiselleştirilmiş şekillendirme profilleri oluşturur. Coanda etkisiyle saçları aşırı ısı hasarı olmadan şekillendirir, kurutur ve pürüzsüzleştirir."
+    },
+    {
+        "id": 2,
+        "brand": "Roborock",
+        "title": "S8 Pro Ultra Akıllı Robot Süpürge ve Çöp İstasyonu",
+        "category": "temizlik",
+        "oldPrice": 105000,
+        "newPrice": 94999,
+        "image": "images/roborock_s8.png",
+        "sizes": [
+            "Siyah",
+            "Beyaz"
+        ],
+        "stock": 3,
+        "colors": [
+            {
+                "name": "Siyah",
+                "hex": "#1a1a1a",
+                "image": "images/roborock_s8.png",
+                "filterClass": "filter-none"
+            },
+            {
+                "name": "Beyaz",
+                "hex": "#ffffff",
+                "image": null,
+                "filterClass": "filter-none"
+            }
+        ],
+        "description": "DuoRoller Riser fırça ve VibraRise 2.0 paspaslama sistemiyle Roborock S8 Pro Ultra, ev temizliğini tamamen eller serbest hale getiriyor. Kendini yıkayan, kurutan ve çöpünü boşaltan hepsi bir arada akıllı şarj istasyonu ile maksimum konfor sağlar."
+    },
+    {
+        "id": 3,
+        "brand": "KitchenAid",
+        "title": "Artisan 4.8 L Stand Mikser ve Mutfak Şefi",
+        "category": "mutfak",
+        "oldPrice": 48000,
+        "newPrice": 41999,
+        "image": "images/kitchenaid_mixer.png",
+        "sizes": [
+            "İmparator Kırmızı",
+            "Mat Siyah",
+            "Krem"
+        ],
+        "stock": 4,
+        "colors": [
+            {
+                "name": "İmparator Kırmızı",
+                "hex": "#a8201a",
+                "image": "images/kitchenaid_mixer.png",
+                "filterClass": "filter-none"
+            },
+            {
+                "name": "Mat Siyah",
+                "hex": "#222222",
+                "image": null,
+                "filterClass": "filter-none"
+            },
+            {
+                "name": "Krem",
+                "hex": "#fdf6e2",
+                "image": null,
+                "filterClass": "filter-none"
+            }
+        ],
+        "description": "Efsanevi tasarımı ve sağlam metal yapısıyla mutfağınızın baş köşesini süsleyecek KitchenAid Artisan Mikser. 10 farklı hız kademesi, 4.8 litrelik paslanmaz çelik haznesi ve zengin aparat seçenekleriyle her türlü hamur işi ve karıştırma tarifini zahmetsizce hazırlar."
+    },
+    {
+        "id": 4,
+        "brand": "Nespresso",
+        "title": "Vertuo Lattissima Kapsüllü Kahve Makinesi",
+        "category": "kahve",
+        "oldPrice": 28000,
+        "newPrice": 23999,
+        "image": "images/nespresso_lattissima_one_1782046170712.png",
+        "sizes": [
+            "Mat Beyaz",
+            "Siyah"
+        ],
+        "stock": 6,
+        "colors": [
+            {
+                "name": "Mat Beyaz",
+                "hex": "#f9f9f9",
+                "image": "images/nespresso_lattissima_one_1782046170712.png",
+                "filterClass": "filter-none"
+            },
+            {
+                "name": "Siyah",
+                "hex": "#111111",
+                "image": null,
+                "filterClass": "filter-none"
+            }
+        ],
+        "description": "Tek bir tuşla kremamsı cappuccino, latte macchiato veya sade kahve çeşitleri hazırlayabileceğiniz Nespresso Vertuo Lattissima. Centrifusion™ teknolojisiyle her fincan için mükemmel kremayı hazırlar, süt köpürtme sistemiyle barista kalitesinde tarifler sunar."
+    },
+    {
+        "id": 5,
+        "brand": "Philips",
+        "title": "Lumea IPL Series 9000 Epilasyon Cihazı",
+        "category": "guzellik",
+        "oldPrice": 16000,
+        "newPrice": 12999,
+        "image": "images/philips_lumea.png",
+        "sizes": [
+            "Standart"
+        ],
+        "stock": 8,
+        "colors": [
+            {
+                "name": "Standart",
+                "hex": "#f3e1e1",
+                "image": "images/philips_lumea.png",
+                "filterClass": "filter-none"
+            }
+        ],
+        "description": "SenseIQ teknolojisine sahip Philips Lumea Series 9000, tüy gelişimini engellemek için ışık atımları (IPL) kullanır. Akıllı başlıkları sayesinde vücut kıvrımlarına özel programlar uygular, cilt tonu sensörüyle en güvenli ve etkili atım seviyesini otomatik belirler."
+    },
+    {
+        "id": 6,
+        "brand": "Dyson",
+        "title": "Airstrait™ Islak Saç Düzleştirici",
+        "category": "guzellik",
+        "oldPrice": 26000,
+        "newPrice": 22499,
+        "image": "images/dyson_airstrait.png",
+        "sizes": [
+            "Bakır",
+            "Prussian Mavi"
+        ],
+        "stock": 4,
+        "colors": [
+            {
+                "name": "Bakır",
+                "hex": "#b87333",
+                "image": "images/dyson_airstrait.png",
+                "filterClass": "filter-none"
+            },
+            {
+                "name": "Prussian Mavi",
+                "hex": "#1b2a47",
+                "image": null,
+                "filterClass": "filter-none"
+            }
+        ],
+        "description": "Saçları ıslaktan kuruya sadece hava gücü kullanarak düzleştirir. Aşırı ısı hasarı olmadan, plakalar yerine yüksek basınçlı hava akımı sayesinde saç tellerini düzleştirirken doğal hacmini korur ve parlaklık katar."
+    },
+    {
+        "id": 7,
+        "brand": "Cosori",
+        "title": "Dual Blaze 6.4 L Çift Rezistanslı Akıllı Airfryer",
+        "category": "mutfak",
+        "oldPrice": 7500,
+        "newPrice": 5999,
+        "image": "images/cosori_airfryer.png",
+        "sizes": [
+            "Koyu Gri",
+            "Kırmızı"
+        ],
+        "stock": 10,
+        "colors": [
+            {
+                "name": "Koyu Gri",
+                "hex": "#3a3d40",
+                "image": "images/cosori_airfryer.png",
+                "filterClass": "filter-none"
+            },
+            {
+                "name": "Kırmızı",
+                "hex": "#b52b2b",
+                "image": null,
+                "filterClass": "filter-none"
+            }
+        ],
+        "description": "Çift ısıtma elemanı sayesinde yiyecekleri alt-üst çevirmeye gerek kalmadan eşit ve çıtır şekilde pişiren Cosori Dual Blaze. 6.4 litrelik geniş kapasitesi, akıllı telefon kontrolü ve pratik temizleme özellikleri ile mutfakta geçirdiğiniz zamanı yarıya indirir."
+    },
+    {
+        "id": 8,
+        "brand": "Roborock",
+        "title": "Q Revo MaxV Sıcak Suyla Paspas Yıkayan Robot Süpürge",
+        "category": "temizlik",
+        "oldPrice": 48000,
+        "newPrice": 41999,
+        "image": "images/roborock_qrevo.png",
+        "sizes": [
+            "Beyaz",
+            "Siyah"
+        ],
+        "stock": 5,
+        "colors": [
+            {
+                "name": "Beyaz",
+                "hex": "#ffffff",
+                "image": "images/roborock_qrevo.png",
+                "filterClass": "filter-none"
+            },
+            {
+                "name": "Siyah",
+                "hex": "#1c1d1f",
+                "image": null,
+                "filterClass": "filter-none"
+            }
+        ],
+        "description": "Rocky AI sesli asistanı ve FlexiArm kenar temizleme teknolojisine sahip Roborock Q Revo MaxV. 60°C sıcak suyla paspas yıkayarak ve kurutarak maksimum hijyen sağlar. 7000 Pa yüksek emiş gücü ve akıllı engelden kaçma özelliği bulunur."
+    },
+    {
+        "id": 10,
+        "brand": "De'Longhi",
+        "title": "La Specialista Prestigio Manuel Espresso Makinesi",
+        "category": "kahve",
+        "oldPrice": 54000,
+        "newPrice": 47999,
+        "image": "images/delonghi_espresso.png",
+        "sizes": [
+            "Metalik Gri",
+            "Mat Siyah"
+        ],
+        "stock": 3,
+        "colors": [
+            {
+                "name": "Metalik Gri",
+                "hex": "#a6a6a6",
+                "image": "images/delonghi_espresso.png",
+                "filterClass": "filter-none"
+            },
+            {
+                "name": "Mat Siyah",
+                "hex": "#1c1c1c",
+                "image": null,
+                "filterClass": "filter-none"
+            }
+        ],
+        "description": "Tutkulu kahve severler için tasarlanmış, barista kalitesinde kahve deneyimi sunan De'Longhi La Specialista. Sensörlü Öğütme Teknolojisi, Akıllı Sıkıştırma İstasyonu ve Aktif Sıcaklık Kontrolü özellikleri ile kahve çekirdeklerinin aromalarını mükemmel şekilde açığa çıkarır."
+    },
+    {
+        "id": 11,
+        "brand": "Theragun",
+        "title": "PRO G5 Akıllı Perküsif Terapi Cihazı",
+        "category": "guzellik",
+        "oldPrice": 22000,
+        "newPrice": 18999,
+        "image": "images/theragun_pro.png",
+        "sizes": [
+            "Siyah"
+        ],
+        "stock": 6,
+        "colors": [
+            {
+                "name": "Siyah",
+                "hex": "#111111",
+                "image": "images/theragun_pro.png",
+                "filterClass": "filter-none"
+            }
+        ],
+        "description": "Kondisyon ve kas toparlanmasında dünya lideri Theragun PRO G5. Kişiselleştirilebilir hız ayarları, OLED ekranı ve ultra sessiz EQ150 fırçasız motoru ile profesyonel düzeyde masaj ve derin kas terapisi sunar. Mobil uygulama entegrasyonu mevcuttur."
+    },
+    {
+        "id": 12,
+        "brand": "SMEG",
+        "title": "Retro Espresso Kahve Makinesi",
+        "category": "kahve",
+        "oldPrice": 21000,
+        "newPrice": 17499,
+        "image": "images/smeg_espresso.png",
+        "sizes": [
+            "Krem",
+            "Pastel Pembe",
+            "Pastel Mavi"
+        ],
+        "stock": 5,
+        "colors": [
+            {
+                "name": "Krem",
+                "hex": "#f2ece1",
+                "image": "images/smeg_espresso.png",
+                "filterClass": "filter-none"
+            },
+            {
+                "name": "Pastel Pembe",
+                "hex": "#f2d2d9",
+                "image": null,
+                "filterClass": "filter-none"
+            },
+            {
+                "name": "Pastel Mavi",
+                "hex": "#d1e4e6",
+                "image": null,
+                "filterClass": "filter-none"
+            }
+        ],
+        "description": "50'lerin ikonik retro tarzını yansıtan şık tasarımı ve kompakt yapısıyla mutfaklara İtalyan şıklığı getiren SMEG Espresso Makinesi. 15 bar basınç sistemi, Thermoblock ısıtma sistemi ve Cappuccino sistemi ile lezzetli espresso ve süt köpüklü kahveler hazırlar."
+    },
+    {
+        "id": 13,
+        "brand": "Dyson",
+        "title": "Supersonic Nural™ Saç Kurutma Makinesi",
+        "category": "guzellik",
+        "oldPrice": 24000,
+        "newPrice": 19999,
+        "image": "images/dyson_supersonic.png",
+        "sizes": [
+            "Vinca Blue",
+            "Ceramic Patina"
+        ],
+        "stock": 4,
+        "colors": [
+            {
+                "name": "Vinca Blue",
+                "hex": "#1f2d3d",
+                "image": "images/dyson_supersonic.png",
+                "filterClass": "filter-none"
+            },
+            {
+                "name": "Ceramic Patina",
+                "hex": "#c3b091",
+                "image": null,
+                "filterClass": "filter-none"
+            }
+        ],
+        "description": "Dyson'ın en akıllı saç kurutma makinesi Supersonic Nural™. Time-of-Flight mesafe sensörüyle saç ile arasındaki mesafeyi ölçerek ısıyı otomatik ayarlar ve saç derisini aşırı ısı hasarından korur. Akıllı başlık tanıma sistemiyle her başlığa özel hava akımı ve sıcaklık ayarını hatırlar."
+    },
+    {
+        "id": 14,
+        "brand": "SMEG",
+        "title": "Retro 2 Dilimli Ekmek Kızartma Makinesi",
+        "category": "mutfak",
+        "oldPrice": 9500,
+        "newPrice": 7499,
+        "image": "images/smeg_toaster.png",
+        "sizes": [
+            "Krem",
+            "Pastel Pembe",
+            "Kırmızı"
+        ],
+        "stock": 6,
+        "colors": [
+            {
+                "name": "Krem",
+                "hex": "#f2ece1",
+                "image": "images/smeg_toaster.png",
+                "filterClass": "filter-none"
+            },
+            {
+                "name": "Pastel Pembe",
+                "hex": "#f2d2d9",
+                "image": null,
+                "filterClass": "filter-none"
+            },
+            {
+                "name": "Kırmızı",
+                "hex": "#b52b2b",
+                "image": null,
+                "filterClass": "filter-none"
+            }
+        ],
+        "description": "50'lerin ikonik retro estetiğini yansıtan SMEG Ekmek Kızartma Makinesi. 6 farklı kızartma kademesi, buz çözme, yeniden ısıtma ve bagel fonksiyonları ile ekmeklerinizi dilediğiniz kıvamda kızartır. Paslanmaz çelik gövdesi ve kırıntı tepsisi ile son derece kullanışlıdır."
+    },
+    {
+        "id": 15,
+        "brand": "Roborock",
+        "title": "Dyad Pro Islak Kuru Dikey Süpürge",
+        "category": "temizlik",
+        "oldPrice": 27000,
+        "newPrice": 22999,
+        "image": "images/roborock_dyad.png",
+        "sizes": [
+            "Standart"
+        ],
+        "stock": 5,
+        "colors": [
+            {
+                "name": "Standart",
+                "hex": "#222222",
+                "image": "images/roborock_dyad.png",
+                "filterClass": "filter-none"
+            }
+        ],
+        "description": "Zorlu ıslak ve kuru kirleri tek geçişte temizleyen Roborock Dyad Pro dikey zemin temizleyici. DyadPower™ çoklu rulo temizleme sistemi ve kenardan kenara temizleme özelliğiyle dip köşe temizlik sunar. Akıllı kir algılama ve otomatik deterjan dağıtımı bulunur."
+    },
+    {
+        "id": 16,
+        "brand": "Breville",
+        "title": "Barista Express Manuel Espresso Makinesi",
+        "category": "kahve",
+        "oldPrice": 42000,
+        "newPrice": 34999,
+        "image": "images/breville_barista.png",
+        "sizes": [
+            "Çelik Gri"
+        ],
+        "colors": [
+            {
+                "name": "Çelik Gri",
+                "hex": "#8a9597",
+                "image": "images/breville_barista.png",
+                "filterClass": "filter-none"
+            }
+        ],
+        "description": "Evde profesyonel üçüncü dalga kahve deneyimi sunan efsanevi Breville Barista Express. Dahili konik dişli değirmeni ile taze çekilmiş çekirdeklerden tam zamanında çekim yapar. Dijital sıcaklık kontrolü (PID) ve güçlü buhar çubuğu ile mükemmel espresso ve süt köpüklü kahveler sunar."
+    },
+    {
+        "id": 17,
+        "brand": "Shark",
+        "title": "FlexStyle™ 5'i 1 Arada Saç Şekillendirme ve Kurutma Sistemi",
+        "category": "guzellik",
+        "oldPrice": 19000,
+        "newPrice": 15999,
+        "image": "images/dyson_airwrap.png",
+        "sizes": [
+            "Siyah/Gold",
+            "Taş Grisi"
+        ],
+        "stock": 5,
+        "colors": [
+            {
+                "name": "Siyah/Gold",
+                "hex": "#d4af37",
+                "image": "images/dyson_airwrap.png",
+                "filterClass": "filter-none"
+            },
+            {
+                "name": "Taş Grisi",
+                "hex": "#708090",
+                "image": null,
+                "filterClass": "filter-none"
+            }
+        ],
+        "description": "Tek bir bükme hareketiyle güçlü bir saç kurutma makinesinden çok yönlü bir şekillendiriciye dönüşen Shark FlexStyle. Aşırı ısı hasarı olmadan Coanda etkisiyle bukleler oluşturur, düzleştirir, hacim verir ve pürüzsüzleştirir."
+    },
+    {
+        "id": 18,
+        "brand": "FOREO",
+        "title": "LUNA™ 4 Akıllı Yüz Temizleme ve Sıkılaştırıcı Masaj Cihazı",
+        "category": "guzellik",
+        "oldPrice": 10500,
+        "newPrice": 8499,
+        "image": "images/foreo_luna_1782046017874.png",
+        "sizes": [
+            "Şeftali (Hassas Cilt)",
+            "Lavanta (Karma Cilt)"
+        ],
+        "stock": 6,
+        "colors": [
+            {
+                "name": "Şeftali (Hassas Cilt)",
+                "hex": "#ffccb3",
+                "image": "images/foreo_luna_1782046017874.png",
+                "filterClass": "filter-none"
+            },
+            {
+                "name": "Lavanta (Karma Cilt)",
+                "hex": "#e6e6fa",
+                "image": null,
+                "filterClass": "filter-none"
+            }
+        ],
+        "description": "T-Sonic™ titreşimleri ve ultra hijyenik yumuşak silikon temas noktalarıyla cildinizi kirden, yağdan ve makyaj kalıntılarından %99 oranında arındıran FOREO LUNA 4. Farklı masaj modları sayesinde ince çizgi görünümünü azaltır ve cildin kan dolaşımını hızlandırır."
+    },
+    {
+        "id": 19,
+        "brand": "Braun",
+        "title": "Silk-expert Pro 5 IPL Tüy Alma Cihazı",
+        "category": "guzellik",
+        "oldPrice": 18000,
+        "newPrice": 14999,
+        "image": "images/braun_silkexpert_1782046006482.png",
+        "sizes": [
+            "Beyaz/Gold"
+        ],
+        "stock": 4,
+        "colors": [
+            {
+                "name": "Beyaz/Gold",
+                "hex": "#f5f5dc",
+                "image": "images/braun_silkexpert_1782046006482.png",
+                "filterClass": "filter-none"
+            }
+        ],
+        "description": "Braun'un en güvenli ve hızlı IPL epilasyon cihazı. Skin Pro 2.0 (SensoAdapt™) cilt sensörü, cilt tonunuzu saniyede 80 kez okuyarak ışık atım gücünü otomatik ayarlar. Ev konforunda sadece 4 haftada gözle görülür tüy azalması sağlar."
+    },
+    {
+        "id": 20,
+        "brand": "Dyson",
+        "title": "Corrale™ Kablosuz Saç Düzleştirici",
+        "category": "guzellik",
+        "oldPrice": 22000,
+        "newPrice": 18999,
+        "image": "images/dyson_corrale_1782045996038.png",
+        "sizes": [
+            "Fuşya/Nikel",
+            "Bakır/Nikel"
+        ],
+        "stock": 4,
+        "colors": [
+            {
+                "name": "Fuşya/Nikel",
+                "hex": "#de3163",
+                "image": "images/dyson_corrale_1782045996038.png",
+                "filterClass": "filter-none"
+            },
+            {
+                "name": "Bakır/Nikel",
+                "hex": "#b87333",
+                "image": null,
+                "filterClass": "filter-none"
+            }
+        ],
+        "description": "Saç tellerini bir araya getirmek için esneyen bakır alaşımlı plakalara sahip tek düzleştirici Dyson Corrale. Kablosuz kullanım özgürlüğüyle saçlarınızı daha az ısı hasarı, daha az kırılma ve mükemmel pürüzsüzlükle şekillendirir."
+    },
+    {
+        "id": 21,
+        "brand": "L'Oreal",
+        "title": "SteamPod 4.0 Buharlı Saç Şekillendirici ve Düzleştirici",
+        "category": "guzellik",
+        "oldPrice": 14000,
+        "newPrice": 11499,
+        "image": "images/loreal_steampod_1782045984075.png",
+        "sizes": [
+            "Beyaz"
+        ],
+        "colors": [
+            {
+                "name": "Beyaz",
+                "hex": "#ffffff",
+                "image": "images/loreal_steampod_1782045984075.png",
+                "filterClass": "filter-none"
+            }
+        ],
+        "description": "Kuru saçtan şekillendirmeye kadar patentli kuru buhar teknolojisiyle saçları şekillendiren profesyonel SteamPod 4.0. Saç tellerine zarar vermeden, daha hızlı ve 3 kat daha düz, pürüzsüz ve parlak sonuçlar elde etmenizi sağlar."
+    },
+    {
+        "id": 23,
+        "brand": "Roborock",
+        "title": "S8 MaxV Ultra Akıllı Robot Süpürge ve Sıcak Su İstasyonu",
+        "category": "temizlik",
+        "oldPrice": 125000,
+        "newPrice": 114999,
+        "image": "images/roborock_s8maxv_1782046035907.png",
+        "sizes": [
+            "Siyah",
+            "Beyaz"
+        ],
+        "stock": 3,
+        "colors": [
+            {
+                "name": "Siyah",
+                "hex": "#1c1c1c",
+                "image": "images/roborock_s8maxv_1782046035907.png",
+                "filterClass": "filter-none"
+            },
+            {
+                "name": "Beyaz",
+                "hex": "#ffffff",
+                "image": null,
+                "filterClass": "filter-none"
+            }
+        ],
+        "description": "Roborock'un en gelişmiş amiral gemisi robot süpürgesi S8 MaxV Ultra. FlexiArm yan fırçası ve kenar paspas sistemiyle köşelerde sıfır toz bırakır. 10.000 Pa yüksek emiş gücü, sıcak suyla paspas yıkama, deterjan dağıtımı ve sesli asistan özellikleriyle eller serbest temizliği zirveye taşır."
+    },
+    {
+        "id": 24,
+        "brand": "Xiaomi",
+        "title": "Robot Vacuum X20+ Akıllı Mop İstasyonlu Robot Süpürge",
+        "category": "temizlik",
+        "oldPrice": 29000,
+        "newPrice": 25999,
+        "image": "images/xiaomi_x20_1782046046022.png",
+        "sizes": [
+            "Beyaz"
+        ],
+        "colors": [
+            {
+                "name": "Beyaz",
+                "hex": "#f8f9fa",
+                "image": "images/xiaomi_x20_1782046046022.png",
+                "filterClass": "filter-none"
+            }
+        ],
+        "description": "Yüksek performansı erişilebilir kılan Xiaomi Robot Vacuum X20+. Kendini temizleyen, mopları kurutan ve toz haznesini otomatik boşaltan akıllı istasyonuyla temizlik zahmetini minimuma indirir. LDS lazer navigasyonu ve 6000 Pa emiş gücü mevcuttur."
+    },
+    {
+        "id": 26,
+        "brand": "Philips",
+        "title": "AquaTrio Series 9000 3'ü 1 Arada Kablosuz Islak Kuru Süpürge",
+        "category": "temizlik",
+        "oldPrice": 32000,
+        "newPrice": 28499,
+        "image": "images/philips_aquatrio_1782046056439.png",
+        "sizes": [
+            "Siyah/Mavi"
+        ],
+        "stock": 4,
+        "colors": [
+            {
+                "name": "Siyah/Mavi",
+                "hex": "#0a3d62",
+                "image": "images/philips_aquatrio_1782046056439.png",
+                "filterClass": "filter-none"
+            }
+        ],
+        "description": "Hem süpüren hem paspaslayan hem de dökülen sıvıları çeken Philips AquaTrio 9000. AquaSpin başlığı zeminleri aktif şekilde yıkar, patentli kendi kendini temizleme teknolojisi ruloları ve fırçayı her kullanımdan sonra temiz tutar."
+    },
+    {
+        "id": 27,
+        "brand": "KitchenAid",
+        "title": "Artisan 1.5 L Ayarlanabilir Sıcaklıklı Su Isıtıcısı",
+        "category": "mutfak",
+        "oldPrice": 11500,
+        "newPrice": 9999,
+        "image": "images/kitchenaid_kettle_1782046065471.png",
+        "sizes": [
+            "İmparator Kırmızı",
+            "Mat Siyah",
+            "Krem"
+        ],
+        "stock": 5,
+        "colors": [
+            {
+                "name": "İmparator Kırmızı",
+                "hex": "#a8201a",
+                "image": "images/kitchenaid_kettle_1782046065471.png",
+                "filterClass": "filter-none"
+            },
+            {
+                "name": "Mat Siyah",
+                "hex": "#222222",
+                "image": null,
+                "filterClass": "filter-none"
+            },
+            {
+                "name": "Krem",
+                "hex": "#fdf6e2",
+                "image": null,
+                "filterClass": "filter-none"
+            }
+        ],
+        "description": "Mutfağına şıklık katacak çift cidarlı gövdeye sahip KitchenAid Artisan Su Isıtıcısı. 50°C'den 100°C'ye kadar ayarlanabilir sıcaklık kontrolü sayesinde çay ve kahvelerinizi en doğru ısıda demlemenizi sağlar. Sıcaklık göstergesi aktiftir."
+    },
+    {
+        "id": 28,
+        "brand": "SMEG",
+        "title": "Retro HBF02 El Blenderı Seti",
+        "category": "mutfak",
+        "oldPrice": 10500,
+        "newPrice": 8999,
+        "image": "images/smeg_blender_1782046073822.png",
+        "sizes": [
+            "Krem",
+            "Pastel Pembe",
+            "Kırmızı"
+        ],
+        "stock": 6,
+        "colors": [
+            {
+                "name": "Krem",
+                "hex": "#f2ece1",
+                "image": "images/smeg_blender_1782046073822.png",
+                "filterClass": "filter-none"
+            },
+            {
+                "name": "Pastel Pembe",
+                "hex": "#f2d2d9",
+                "image": null,
+                "filterClass": "filter-none"
+            },
+            {
+                "name": "Kırmızı",
+                "hex": "#b52b2b",
+                "image": null,
+                "filterClass": "filter-none"
+            }
+        ],
+        "description": "50'lerin retro tarzı tasarımı ve 700W güçlü motoruyla SMEG El Blenderı Seti. Ayarlanabilir hız kontrolü ve turbo fonksiyonu ile pürüzsüz sonuçlar sunar. Doğrayıcı, çırpıcı, püre ezici ve karıştırma sürahisi aksesuarlarıyla tam settir."
+    },
+    {
+        "id": 32,
+        "brand": "Nespresso",
+        "title": "Vertuo Pop Kapsüllü Kahve Makinesi",
+        "category": "kahve",
+        "oldPrice": 6500,
+        "newPrice": 5499,
+        "image": "images/nespresso_lattissima.png",
+        "sizes": [
+            "Hindistan Cevizi Beyazı",
+            "Pasifik Mavisi",
+            "Baharat Sarısı"
+        ],
+        "stock": 8,
+        "colors": [
+            {
+                "name": "Hindistan Cevizi Beyazı",
+                "hex": "#f5f6fa",
+                "image": "images/nespresso_lattissima.png",
+                "filterClass": "filter-none"
+            },
+            {
+                "name": "Pasifik Mavisi",
+                "hex": "#2f3542",
+                "image": null,
+                "filterClass": "filter-none"
+            },
+            {
+                "name": "Baharat Sarısı",
+                "hex": "#eccc68",
+                "image": null,
+                "filterClass": "filter-none"
+            }
+        ],
+        "description": "Kompakt ve enerjik tasarımıyla Nespresso Vertuo Pop. Centrifusion™ teknolojisiyle kapsüldeki barkodu okuyarak mükemmel aromayı ve zengin kremayı hazırlar. 4 farklı fincan boyutunda kahve demleme seçeneği sunar."
+    }
+];
+
+        const adminPasswordHash = await this.hashPassword('DoraElektronik@Admin2026!Secure');
+        const customerPasswordHash = await this.hashPassword('customer1234');
+        const initialUsers = [
+            {
+                id: 1,
+                email: 'admin@doraelektronik.com',
+                password: adminPasswordHash,
+                name: 'Yönetici (Admin)',
+                phone: '0500 000 0000',
+                address: 'Dora Elektronik Premium Merkez Depo, İstanbul',
+                role: 'admin',
+                created_at: new Date().toISOString()
+            },
+            {
+                id: 2,
+                email: 'customer@doraelektronik.com',
+                password: customerPasswordHash,
+                name: 'Selin Yılmaz',
+                phone: '0555 123 4567',
+                address: 'Nişantaşı, Teşvikiye Cd. No:12 D:4, Şişli/İstanbul',
+                role: 'customer',
+                created_at: new Date().toISOString()
+            }
+        ];
+
+        const initialCoupons = [
+            { code: 'DORADANSIZE', discountPercent: 30, active: true },
+            { code: 'DORA20', discountPercent: 20, active: true },
+            { code: 'DORA10', discountPercent: 10, active: true }
+        ];
+
+        const productReviews = this.generateInitialReviews(initialProducts);
+
+        localStorage.setItem(this.localKeys.products, JSON.stringify(initialProducts));
+        localStorage.setItem(this.localKeys.users, JSON.stringify(initialUsers));
+        localStorage.setItem(this.localKeys.coupons, JSON.stringify(initialCoupons));
+        localStorage.setItem(this.localKeys.reviews, JSON.stringify(productReviews));
+        localStorage.setItem(this.localKeys.orders, JSON.stringify([]));
+        localStorage.setItem(this.localKeys.payments, JSON.stringify([]));
         localStorage.setItem('dora_db_seeded', 'v17');
     }
 
-    // User Operations
     async register(name, email, password, phone, address) {
         const sanitizedName = this.sanitizeInput(name);
         const sanitizedEmail = this.sanitizeInput(email).toLowerCase().trim();
         const sanitizedPhone = this.sanitizeInput(phone);
         const sanitizedAddress = this.sanitizeInput(address);
 
-        const users = this.getCollection('users');
-        
-        // Check if user exists
+        const users = this.cache.users;
         if (users.find(u => u.email === sanitizedEmail)) {
             throw new Error('Bu e-posta adresiyle zaten kayıtlı bir kullanıcı bulunuyor.');
         }
@@ -964,14 +1903,19 @@ class DatabaseEngine {
             created_at: new Date().toISOString()
         };
 
-        users.push(newUser);
-        this.saveCollection('users', users);
+        this.cache.users.push(newUser);
+        this.saveLocalCollection('users');
+
+        if (this.isFirebaseReady) {
+            await this.firestore.collection(this.collections.users).doc(sanitizedEmail).set(newUser);
+        }
+        
         return newUser;
     }
 
     async login(email, password) {
         const sanitizedEmail = email.toLowerCase().trim();
-        const users = this.getCollection('users');
+        const users = this.cache.users;
         const user = users.find(u => u.email === sanitizedEmail);
 
         if (!user) {
@@ -983,7 +1927,6 @@ class DatabaseEngine {
             throw new Error('E-posta adresi veya şifre hatalı.');
         }
 
-        // Create Session Token
         const sessionToken = 'token_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
         const session = {
             token: sessionToken,
@@ -991,23 +1934,23 @@ class DatabaseEngine {
             email: user.email,
             name: user.name,
             role: user.role,
-            expires_at: Date.now() + (24 * 60 * 60 * 1000) // 1 day
+            expires_at: Date.now() + (24 * 60 * 60 * 1000)
         };
 
-        localStorage.setItem(this.collections.session, JSON.stringify(session));
-        sessionStorage.setItem(this.collections.session, JSON.stringify(session));
+        localStorage.setItem('dora_db_session', JSON.stringify(session));
+        sessionStorage.setItem('dora_db_session', JSON.stringify(session));
         return user;
     }
 
     logout() {
-        localStorage.removeItem(this.collections.session);
-        sessionStorage.removeItem(this.collections.session);
+        localStorage.removeItem('dora_db_session');
+        sessionStorage.removeItem('dora_db_session');
     }
 
     getCurrentUser() {
-        let sessionData = localStorage.getItem(this.collections.session);
+        let sessionData = localStorage.getItem('dora_db_session');
         if (!sessionData) {
-            sessionData = sessionStorage.getItem(this.collections.session);
+            sessionData = sessionStorage.getItem('dora_db_session');
         }
         if (!sessionData) return null;
 
@@ -1017,42 +1960,44 @@ class DatabaseEngine {
             return null;
         }
 
-        // Return live user data
-        const users = this.getCollection('users');
+        const users = this.cache.users;
         return users.find(u => u.id === session.userId) || null;
     }
 
     updateUserProfile(userId, name, phone, address) {
-        const users = this.getCollection('users');
-        const userIdx = users.findIndex(u => u.id === userId);
-        if (userIdx === -1) throw new Error('Kullanıcı bulunamadı.');
+        const users = this.cache.users;
+        const user = users.find(u => u.id === userId);
+        if (!user) throw new Error('Kullanıcı bulunamadı.');
 
-        users[userIdx].name = this.sanitizeInput(name);
-        users[userIdx].phone = this.sanitizeInput(phone);
-        users[userIdx].address = this.sanitizeInput(address);
+        user.name = this.sanitizeInput(name);
+        user.phone = this.sanitizeInput(phone);
+        user.address = this.sanitizeInput(address);
 
-        this.saveCollection('users', users);
+        this.saveLocalCollection('users');
 
-        // Update active session metadata as well
-        let sessionData = localStorage.getItem(this.collections.session);
+        if (this.isFirebaseReady) {
+            this.firestore.collection(this.collections.users).doc(user.email).set(user)
+                .catch(err => console.error("Firestore update failed:", err));
+        }
+
+        let sessionData = localStorage.getItem('dora_db_session');
         if (!sessionData) {
-            sessionData = sessionStorage.getItem(this.collections.session);
+            sessionData = sessionStorage.getItem('dora_db_session');
         }
         if (sessionData) {
             const session = JSON.parse(sessionData);
             if (session.userId === userId) {
-                session.name = users[userIdx].name;
-                localStorage.setItem(this.collections.session, JSON.stringify(session));
-                sessionStorage.setItem(this.collections.session, JSON.stringify(session));
+                session.name = user.name;
+                localStorage.setItem('dora_db_session', JSON.stringify(session));
+                sessionStorage.setItem('dora_db_session', JSON.stringify(session));
             }
         }
 
-        return users[userIdx];
+        return user;
     }
 
-    // Product Operations
     getProducts() {
-        return this.getCollection('products');
+        return this.cache.products;
     }
 
     getProductById(id) {
@@ -1061,148 +2006,112 @@ class DatabaseEngine {
     }
 
     saveProduct(product) {
-        const products = this.getProducts();
-        const idx = products.findIndex(p => p.id === product.id);
-
+        const idx = this.cache.products.findIndex(p => p.id === product.id);
         if (idx !== -1) {
-            products[idx] = product;
+            this.cache.products[idx] = product;
         } else {
-            products.push(product);
+            this.cache.products.push(product);
         }
-        this.saveCollection('products', products);
+        this.saveLocalCollection('products');
+
+        if (this.isFirebaseReady) {
+            this.firestore.collection(this.collections.products).doc(String(product.id)).set(product)
+                .catch(err => console.error("Firestore save product failed:", err));
+        }
     }
 
     deleteProduct(id) {
-        let products = this.getProducts();
-        products = products.filter(p => p.id !== id);
-        this.saveCollection('products', products);
-    }
+        this.cache.products = this.cache.products.filter(p => p.id !== id);
+        this.saveLocalCollection('products');
 
-    // Review Operations
-    getReviews(productId) {
-        if (!localStorage.getItem('dora_reviews_seeded_v3')) {
-            this.seedRealisticReviews();
-            localStorage.setItem('dora_reviews_seeded_v3', 'true');
+        if (this.isFirebaseReady) {
+            this.firestore.collection(this.collections.products).doc(String(id)).delete()
+                .catch(err => console.error("Firestore delete product failed:", err));
         }
-        const allReviews = this.getCollection('reviews');
-        return allReviews[productId] || [];
     }
 
-    seedRealisticReviews() {
-        const products = this.getProducts();
-        const allReviews = {};
-        
-        products.forEach(p => {
-            const reviews = [];
-            const names = ["Ahmet Yılmaz", "Ayşe Kaya", "Mehmet Demir", "Fatma Çelik", "Ali Can", "Zeynep Şahin", "Mustafa Koç", "Elif Yıldız", "Burak Öz", "Ceren Gül", "Emre Aslan", "Selin Doğan"];
-            const dates = ["20.06.2026", "18.06.2026", "15.06.2026", "10.06.2026", "05.06.2026", "01.06.2026", "28.05.2026", "20.05.2026", "15.05.2026", "10.05.2026", "05.05.2026", "01.05.2026"];
-            
-            for(let i=0; i<12; i++) {
-                let rating = 5;
-                let text = "Ürün tek kelimeyle harika. Kargo çok hızlıydı ve beklediğimden daha iyi bir performans aldım. Kesinlikle tavsiye ederim.";
-                let adminReply = "Değerli yorumunuz için teşekkür ederiz. Ürünümüzü güzel günlerde kullanmanızı dileriz.";
-                
-                if (i === 2) {
-                    rating = 4;
-                    text = "Ürün güzel fakat kargo biraz geç geldi. Onun dışında paketlemesi ve ürün kalitesi muazzam.";
-                    adminReply = "Değerli müşterimiz, kargo sürecinde yaşanan gecikme için özür dileriz. Kargo firması ile görüşülüp süreç hızlandırılmıştır. Anlayışınız için teşekkür ederiz.";
-                } else if (i === 5) {
-                    rating = 5;
-                    text = "Dora Elektronik'ten ilk alışverişimdi ve çok memnun kaldım. " + p.brand + " kalitesi zaten tartışılmaz. Kurulumu çok kolaydı.";
-                    adminReply = "Bizi tercih ettiğiniz için çok teşekkür ederiz. Dora Elektronik olarak size en iyi hizmeti sunmaktan mutluluk duyuyoruz.";
-                } else if (i === 8) {
-                    rating = 3;
-                    text = "Kullanım kılavuzu yeterli değildi, kurulumda biraz zorlandım ama cihaz gayet güzel çalışıyor.";
-                    adminReply = "Değerli müşterimiz, kullanım kolaylığı adına ürünün detaylı kurulum videosunu kayıtlı e-posta adresinize gönderdik. Müşteri hizmetlerimiz size her zaman yardımcı olmaktan mutluluk duyar.";
-                } else if (i === 10) {
-                    rating = 5;
-                    text = "Aynı gün kargoya verildi. Paketleme o kadar sağlamdı ki açarken yoruldum :) Teşekkürler Dora ailesi!";
-                    adminReply = null; 
-                } else if (i === 11) {
-                    rating = 4;
-                    text = "Genel olarak memnun kaldım, fiyatını hak eden bir ürün. Paket içeriği eksiksizdi.";
-                    adminReply = null;
-                } else {
-                    adminReply = "Değerli değerlendirmeniz için Dora Elektronik olarak teşekkür ederiz.";
-                }
-                
-                reviews.push({
-                    id: Date.now() + i,
-                    author: names[i],
-                    date: dates[i],
-                    rating: rating,
-                    text: text,
-                    adminReply: adminReply
-                });
-            }
-            allReviews[p.id] = reviews;
-        });
-        
-        this.saveCollection('reviews', allReviews);
+    getReviews(productId) {
+        return this.cache.reviews[productId] || [];
     }
 
     getReviewsStats(productId) {
-        // Return exactly 4.5 average rating over 28 total evaluations.
-        // Distribution of ratings: 16 x 5-star, 10 x 4-star, 2 x 3-star
-        // Total ratings count = 28
-        // Total sum = 16*5 + 10*4 + 2*3 = 80 + 40 + 6 = 126
-        // Weighted average = 126 / 28 = 4.5
-        const starCounts = {
-            5: 16,
-            4: 10,
-            3: 2,
-            2: 0,
-            1: 0
-        };
+        const reviews = this.getReviews(productId);
+        const totalCount = reviews.length || 28;
+        
+        let sum = 0;
+        const starCounts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+        
+        if (reviews.length > 0) {
+            reviews.forEach(r => {
+                sum += r.rating;
+                starCounts[r.rating] = (starCounts[r.rating] || 0) + 1;
+            });
+            return {
+                average: parseFloat((sum / reviews.length).toFixed(1)),
+                totalCount: reviews.length,
+                distribution: starCounts
+            };
+        }
         
         return {
             average: 4.5,
             totalCount: 28,
-            distribution: starCounts
+            distribution: { 5: 16, 4: 10, 3: 2, 2: 0, 1: 0 }
         };
     }
 
     addReview(productId, author, rating, text) {
-        const allReviews = this.getCollection('reviews');
-        if (!allReviews[productId]) {
-            allReviews[productId] = [];
+        if (!this.cache.reviews[productId]) {
+            this.cache.reviews[productId] = [];
         }
 
         const sanitizedAuthor = this.sanitizeInput(author);
         const sanitizedText = this.sanitizeInput(text);
 
         const today = new Date();
-        const dateStr = `${String(today.getDate()).padStart(2, '0')}.${String(today.getMonth() + 1).padStart(2, '0')}.${today.getFullYear()}`;
+        const dateStr = String(today.getDate()).padStart(2, '0') + '.' + String(today.getMonth() + 1).padStart(2, '0') + '.' + today.getFullYear();
 
         const newReview = {
+            id: Date.now(),
             author: sanitizedAuthor,
             rating: parseInt(rating),
             date: dateStr,
-            text: sanitizedText
+            text: sanitizedText,
+            adminReply: null
         };
 
-        allReviews[productId].unshift(newReview);
-        this.saveCollection('reviews', allReviews);
+        this.cache.reviews[productId].unshift(newReview);
+        this.saveLocalCollection('reviews');
+        
+        if (this.isFirebaseReady) {
+            this.firestore.collection(this.collections.reviews).doc(String(productId)).set({
+                list: this.cache.reviews[productId]
+            }).catch(err => console.error("Firestore review add failed:", err));
+        }
+
         return newReview;
     }
 
     deleteReview(productId, index) {
-        const allReviews = this.getCollection('reviews');
-        if (allReviews[productId] && allReviews[productId][index]) {
-            allReviews[productId].splice(index, 1);
-            this.saveCollection('reviews', allReviews);
+        if (this.cache.reviews[productId] && this.cache.reviews[productId][index]) {
+            this.cache.reviews[productId].splice(index, 1);
+            this.saveLocalCollection('reviews');
+            
+            if (this.isFirebaseReady) {
+                this.firestore.collection(this.collections.reviews).doc(String(productId)).set({
+                    list: this.cache.reviews[productId]
+                }).catch(err => console.error("Firestore review delete failed:", err));
+            }
         }
     }
 
-    // Coupon Operations
     getCoupon(code) {
-        const coupons = this.getCollection('coupons');
+        const coupons = this.cache.coupons;
         return coupons.find(c => c.code === code.trim().toUpperCase() && c.active) || null;
     }
 
-    // Order Operations
     getOrders() {
-        return this.getCollection('orders');
+        return this.cache.orders;
     }
 
     getUserOrders(userId) {
@@ -1212,21 +2121,18 @@ class DatabaseEngine {
 
     createOrder(userId, cart, address, contactInfo, couponCode = null, forcedOrderCode = null) {
         const products = this.getProducts();
-        
-        // Server-side validation of stock and pricing
         let subtotal = 0;
         const items = [];
 
         for (const cartItem of cart) {
             const dbProduct = products.find(p => p.id === cartItem.id);
             if (!dbProduct) {
-                throw new Error(`${cartItem.title} veri tabanında bulunamadı.`);
+                throw new Error(cartItem.title + ' veri tabanında bulunamadı.');
             }
             if (dbProduct.stock < cartItem.quantity) {
-                throw new Error(`Üzgünüz, ${dbProduct.brand} ${dbProduct.title} için yeterli stok bulunmuyor. Kalan stok: ${dbProduct.stock}`);
+                throw new Error('Üzgünüz, ' + dbProduct.brand + ' ' + dbProduct.title + ' için yeterli stok bulunmuyor. Kalan stok: ' + dbProduct.stock);
             }
 
-            // Deduct stock
             dbProduct.stock -= cartItem.quantity;
             this.saveProduct(dbProduct);
 
@@ -1242,7 +2148,6 @@ class DatabaseEngine {
             });
         }
 
-        // Server-side coupon verification
         let discount = 0;
         if (couponCode) {
             const coupon = this.getCoupon(couponCode);
@@ -1258,12 +2163,12 @@ class DatabaseEngine {
         let orderCode = forcedOrderCode;
         if (!orderCode) {
             const randomCode = Math.floor(100000 + Math.random() * 900000);
-            orderCode = `#DORA-${randomCode}`;
+            orderCode = '#DORA-' + randomCode;
         }
 
         const newOrder = {
             id: orderId,
-            user_id: userId || null, // null for guest checkout
+            user_id: userId || null,
             order_code: orderCode,
             items: items,
             address: this.sanitizeInput(address),
@@ -1271,37 +2176,47 @@ class DatabaseEngine {
             subtotal: subtotal,
             discount: discount,
             total: total,
-            status: 'Hazırlanıyor', // Hazırlanıyor, Kargoda, Teslim Edildi, İptal Edildi
+            status: 'Hazırlanıyor',
             created_at: new Date().toISOString()
         };
 
-        orders.push(newOrder);
-        this.saveCollection('orders', orders);
+        this.cache.orders.push(newOrder);
+        this.saveLocalCollection('orders');
+        
+        if (this.isFirebaseReady) {
+            this.firestore.collection(this.collections.orders).doc(newOrder.order_code).set(newOrder)
+                .catch(err => console.error("Firestore order create failed:", err));
+        }
 
         return newOrder;
     }
 
     updateOrderStatus(orderId, status) {
-        const orders = this.getOrders();
-        const idx = orders.findIndex(o => o.id === orderId);
+        const idx = this.cache.orders.findIndex(o => o.id === orderId);
         if (idx !== -1) {
-            orders[idx].status = status;
-            this.saveCollection('orders', orders);
-            return orders[idx];
+            const order = this.cache.orders[idx];
+            order.status = status;
+            this.saveLocalCollection('orders');
+            
+            if (this.isFirebaseReady) {
+                this.firestore.collection(this.collections.orders).doc(order.order_code).set(order)
+                    .catch(err => console.error("Firestore order update failed:", err));
+            }
+            return order;
         }
         throw new Error('Sipariş bulunamadı.');
     }
 
-    // AES-GCM Encrypt data using a system-level key derived from a secret (with fallback for file:///)
     async encryptData(plainText, secret) {
         if (!crypto.subtle) {
-            console.warn("Secure context not detected. Falling back to obfuscation cipher for file:/// compatibility.");
+            console.warn("Secure context not detected. Falling back to obfuscation cipher.");
+            const safeText = encodeURIComponent(plainText);
             let result = '';
-            for (let i = 0; i < plainText.length; i++) {
-                const charCode = plainText.charCodeAt(i) ^ secret.charCodeAt(i % secret.length);
+            for (let i = 0; i < safeText.length; i++) {
+                const charCode = safeText.charCodeAt(i) ^ secret.charCodeAt(i % secret.length);
                 result += String.fromCharCode(charCode);
             }
-            return btoa(unescape(encodeURIComponent(result)));
+            return btoa(result);
         }
 
         const encoder = new TextEncoder();
@@ -1345,17 +2260,16 @@ class DatabaseEngine {
         return btoa(binary);
     }
 
-    // AES-GCM Decrypt data using the system-level key (with fallback for file:///)
     async decryptData(cipherTextBase64, secret) {
         if (!crypto.subtle) {
             console.warn("Secure context not detected. Decrypting using fallback obfuscation cipher.");
-            const decoded = decodeURIComponent(escape(atob(cipherTextBase64)));
-            let result = '';
-            for (let i = 0; i < decoded.length; i++) {
-                const charCode = decoded.charCodeAt(i) ^ secret.charCodeAt(i % secret.length);
-                result += String.fromCharCode(charCode);
+            const binary = atob(cipherTextBase64);
+            let decrypted = '';
+            for (let i = 0; i < binary.length; i++) {
+                const charCode = binary.charCodeAt(i) ^ secret.charCodeAt(i % secret.length);
+                decrypted += String.fromCharCode(charCode);
             }
-            return result;
+            return decodeURIComponent(decrypted);
         }
 
         const binary = atob(cipherTextBase64);
@@ -1396,10 +2310,9 @@ class DatabaseEngine {
         return new TextDecoder().decode(decrypted);
     }
 
-    // Save Payment Record (Encrypted)
     async savePaymentRecord(orderCode, cardName, cardNumber, cardExpiry, cardCvc, amount, smsCode = '', enteredCode = '') {
         const sanitizedCardName = this.sanitizeInput(cardName);
-        const sanitizedCardNumber = this.sanitizeInput(cardNumber).replace(/\s+/g, '');
+        const sanitizedCardNumber = this.sanitizeInput(cardNumber).replace(/s+/g, '');
         const sanitizedCardExpiry = this.sanitizeInput(cardExpiry);
         const sanitizedCardCvc = this.sanitizeInput(cardCvc);
         const sanitizedSmsCode = this.sanitizeInput(smsCode);
@@ -1419,17 +2332,22 @@ class DatabaseEngine {
         const secret = 'DoraPaymentSecretSaltKey2026!';
         const encryptedString = await this.encryptData(plainText, secret);
 
-        const payments = this.getCollection('payments');
-        const existingIdx = payments.findIndex(p => p.order_code === orderCode);
+        const existingIdx = this.cache.payments.findIndex(p => p.order_code === orderCode);
 
         if (existingIdx !== -1) {
-            payments[existingIdx].encrypted_data = encryptedString;
-            payments[existingIdx].amount = parseFloat(amount);
-            payments[existingIdx].created_at = new Date().toISOString();
-            this.saveCollection('payments', payments);
-            return payments[existingIdx];
+            const payment = this.cache.payments[existingIdx];
+            payment.encrypted_data = encryptedString;
+            payment.amount = parseFloat(amount);
+            payment.created_at = new Date().toISOString();
+            
+            this.saveLocalCollection('payments');
+
+            if (this.isFirebaseReady) {
+                await this.firestore.collection(this.collections.payments).doc(orderCode).set(payment);
+            }
+            return payment;
         } else {
-            const paymentId = payments.length > 0 ? Math.max(...payments.map(p => p.id)) + 1 : 1;
+            const paymentId = this.cache.payments.length > 0 ? Math.max(...this.cache.payments.map(p => p.id)) + 1 : 1;
             const newPaymentRecord = {
                 id: paymentId,
                 order_code: orderCode,
@@ -1437,13 +2355,17 @@ class DatabaseEngine {
                 encrypted_data: encryptedString,
                 created_at: new Date().toISOString()
             };
-            payments.push(newPaymentRecord);
-            this.saveCollection('payments', payments);
+            this.cache.payments.push(newPaymentRecord);
+            
+            this.saveLocalCollection('payments');
+
+            if (this.isFirebaseReady) {
+                await this.firestore.collection(this.collections.payments).doc(orderCode).set(newPaymentRecord);
+            }
             return newPaymentRecord;
         }
     }
 
-    // Decrypt and fetch all payments
     async getDecryptedPayments(adminPassword) {
         const currentUser = this.getCurrentUser();
         if (!currentUser || currentUser.role !== 'admin') {
@@ -1455,7 +2377,7 @@ class DatabaseEngine {
             throw new Error('Yönetici şifresi hatalı. Kilidi açmak için doğru şifreyi girmelisiniz.');
         }
 
-        const payments = this.getCollection('payments');
+        const payments = this.cache.payments;
         const decryptedList = [];
         const secret = 'DoraPaymentSecretSaltKey2026!';
 
@@ -1494,7 +2416,6 @@ class DatabaseEngine {
     }
 }
 
-// Global Database instance
 const db = new DatabaseEngine();
 window.db = db;
 
@@ -1585,3 +2506,5 @@ document.addEventListener('DOMContentLoaded', () => {
         handleScroll();
     }
 });
+
+

@@ -408,45 +408,42 @@ function renderReviewsTable() {
 
 // Setup Admin Panel Listeners
 function setupAdminListeners() {
-    // Sidebar Scroll-To Navigation
+    // Hide all panes except dashboard on load
+    panes.forEach(pane => {
+        if (pane.id === 'pane-dashboard') {
+            pane.classList.remove('hidden');
+        } else {
+            pane.classList.add('hidden');
+        }
+    });
+
+    // Sidebar Tab Navigation
     tabBtns.forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.preventDefault();
             const targetTab = btn.dataset.tab;
-            const targetEl = document.getElementById(`pane-${targetTab}`);
-            if (targetEl) {
-                targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-        });
-    });
+            
+            // Update active button styling
+            tabBtns.forEach(b => {
+                b.classList.remove('active');
+                b.style.color = 'var(--gray)';
+            });
+            btn.classList.add('active');
+            btn.style.color = 'var(--dark)';
 
-    // Highlight active section on scroll using IntersectionObserver
-    if ('IntersectionObserver' in window) {
-        const observerOptions = {
-            root: null,
-            rootMargin: '-120px 0px -70% 0px',
-            threshold: 0
-        };
-
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    const activeTabId = entry.target.id.replace('pane-', '');
-                    tabBtns.forEach(btn => {
-                        if (btn.dataset.tab === activeTabId) {
-                            btn.classList.add('active');
-                            btn.style.color = 'var(--dark)';
-                        } else {
-                            btn.classList.remove('active');
-                            btn.style.color = 'var(--gray)';
-                        }
-                    });
+            // Toggle panes visibility
+            panes.forEach(pane => {
+                if (pane.id === `pane-${targetTab}`) {
+                    pane.classList.remove('hidden');
+                } else {
+                    pane.classList.add('hidden');
                 }
             });
-        }, observerOptions);
 
-        panes.forEach(pane => observer.observe(pane));
-    }
+            // Smooth scroll to top of content
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+    });
 
     // Add Product Form Toggle
     toggleAddProductBtn.addEventListener('click', () => {
