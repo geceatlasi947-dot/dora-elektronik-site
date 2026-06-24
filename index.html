@@ -57,6 +57,71 @@
         <div class="scroll-down">Keşfet</div>
     </section>
 
+    <!-- Category Showcase Section -->
+    <section class="category-showcase container">
+        <div class="section-header" style="text-align: left; margin-bottom: 3rem;">
+            <h3>Seçkin <em>Kategoriler</em></h3>
+            <p>Premium teknolojileri yaşam alanınıza göre keşfedin</p>
+        </div>
+        <div class="category-grid">
+            <div class="category-card" onclick="setCategory('guzellik'); document.getElementById('products').scrollIntoView({behavior: 'smooth'});">
+                <div class="category-img">
+                    <img src="images/dyson_airwrap.png" alt="Güzellik & Saç Şekillendirme">
+                </div>
+                <div class="category-info">
+                    <h4>Güzellik</h4>
+                    <p>Saç Şekillendirme & Kişisel Bakım</p>
+                    <span class="category-link">Keşfet <i class="fa-solid fa-arrow-right"></i></span>
+                </div>
+            </div>
+            <div class="category-card" onclick="setCategory('temizlik'); document.getElementById('products').scrollIntoView({behavior: 'smooth'});">
+                <div class="category-img">
+                    <img src="images/roborock_s8.png" alt="Akıllı Temizlik & Süpürgeler">
+                </div>
+                <div class="category-info">
+                    <h4>Temizlik</h4>
+                    <p>Akıllı Süpürgeler & Hijyen</p>
+                    <span class="category-link">Keşfet <i class="fa-solid fa-arrow-right"></i></span>
+                </div>
+            </div>
+            <div class="category-card" onclick="setCategory('mutfak'); document.getElementById('products').scrollIntoView({behavior: 'smooth'});">
+                <div class="category-img">
+                    <img src="images/kitchenaid_mixer.png" alt="Premium Mutfak Aletleri">
+                </div>
+                <div class="category-info">
+                    <h4>Mutfak</h4>
+                    <p>Mutfak Şefleri & Pişirme</p>
+                    <span class="category-link">Keşfet <i class="fa-solid fa-arrow-right"></i></span>
+                </div>
+            </div>
+            <div class="category-card" onclick="setCategory('kahve'); document.getElementById('products').scrollIntoView({behavior: 'smooth'});">
+                <div class="category-img">
+                    <img src="images/nespresso_lattissima.png" alt="Lüks Kahve Makineleri">
+                </div>
+                <div class="category-info">
+                    <h4>Kahve</h4>
+                    <p>Nespresso & Espresso Deneyimi</p>
+                    <span class="category-link">Keşfet <i class="fa-solid fa-arrow-right"></i></span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Brand Logo Section -->
+    <section class="brand-section container" style="padding: 4rem 20px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); margin-top: 4rem; margin-bottom: 4rem;">
+        <div style="text-align: center; margin-bottom: 2.5rem;">
+            <p style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 3px; color: var(--primary); font-weight: 600; margin: 0;">Resmi Distribütör Garantisiyle</p>
+        </div>
+        <div class="brand-grid" style="display: flex; justify-content: space-around; align-items: center; flex-wrap: wrap; gap: 30px; opacity: 0.85;">
+            <span class="brand-item">DYSON</span>
+            <span class="brand-item">ROBOROCK</span>
+            <span class="brand-item">KITCHENAID</span>
+            <span class="brand-item">NESPRESSO</span>
+            <span class="brand-item">PHILIPS</span>
+            <span class="brand-item">SMEG</span>
+        </div>
+    </section>
+
     <!-- Product Grid -->
     <main id="products" class="container product-section">
         <div class="section-header products-section-header">

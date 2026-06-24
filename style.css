@@ -393,6 +393,127 @@ a {
     100% { transform: scaleY(0); transform-origin: bottom; }
 }
 
+/* Category Showcase */
+.category-showcase {
+    padding: 6rem 20px 2rem;
+}
+
+.category-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 25px;
+    margin-bottom: 2rem;
+}
+
+@media (max-width: 992px) {
+    .category-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 576px) {
+    .category-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.category-card {
+    background: rgba(248, 246, 242, 0.45);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    flex-direction: column;
+    height: 380px;
+    position: relative;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.01);
+}
+
+.category-card:hover {
+    transform: translateY(-8px);
+    border-color: rgba(212, 176, 106, 0.4);
+    box-shadow: 0 15px 30px rgba(212, 176, 106, 0.08), 0 0 1px rgba(212, 176, 106, 0.25);
+    background: rgba(248, 246, 242, 0.75);
+}
+
+.category-img {
+    height: 220px;
+    background: radial-gradient(circle at 50% 50%, #ffffff 0%, rgba(248, 246, 242, 0.3) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+}
+
+.category-img img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    mix-blend-mode: multiply;
+    transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.category-card:hover .category-img img {
+    transform: scale(1.08);
+}
+
+.category-info {
+    padding: 20px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.category-info h4 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.4rem;
+    color: var(--dark);
+    margin-bottom: 5px;
+    font-weight: 600;
+}
+
+.category-info p {
+    font-size: 0.85rem;
+    color: var(--gray);
+    margin-bottom: 15px;
+}
+
+.category-link {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: var(--transition);
+}
+
+.category-card:hover .category-link {
+    color: var(--primary-hover);
+    transform: translateX(3px);
+}
+
+/* Brand partners */
+.brand-item {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.8rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--gray);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.brand-item:hover {
+    color: var(--primary) !important;
+    transform: scale(1.05);
+}
+
 /* Products */
 .product-section {
     padding: 7rem 20px;
@@ -1296,6 +1417,7 @@ footer {
 
     .detail-actions {
         flex-direction: column;
+    }
 }
 
 /* Search Box in Navbar */
